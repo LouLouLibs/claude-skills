@@ -50,9 +50,9 @@ parse without further Bash calls.
 ssh HOST "cd DIR && bash -c '
   jq -n \
     --rawfile sm_log <({ ls -1t .snakemake/log/*.snakemake.log 2>/dev/null | head -1 | xargs -r tail -300; } || true; echo \"__END__\") \
-    --rawfile log_listing <(ls -lt log/*.log 2>/dev/null || echo \"no log directory\") \
-    --rawfile slurm <(sacct --format=JobID,JobName,State,ExitCode,Start,End,MaxRSS \
-      --starttime \$(date --date=\"24 hours ago\" +%Y-%m-%d) -n 2>/dev/null || echo \"sacct unavailable\") \
+    --rawfile log_listing <({ ls -lt log/*.log* 2>/dev/null || echo \"no log directory\"; } || true; echo \"__END__\") \
+    --rawfile slurm <({ sacct --format=JobID,JobName,State,ExitCode,Start,End,MaxRSS \
+      --starttime \$(date --date=\"24 hours ago\" +%Y-%m-%d) -n 2>/dev/null || echo \"sacct unavailable\"; } || true; echo \"__END__\") \
     \"{snakemake_log: \\\$sm_log, log_listing: \\\$log_listing, slurm_status: \\\$slurm}\"
 '" > /tmp/pipeline_diag_raw.json && \
   jq -r '.snakemake_log' /tmp/pipeline_diag_raw.json > /tmp/pipeline_diag_sm.txt && \
@@ -172,6 +172,10 @@ ssh HOST "cd DIR && bash -c '
 Generalize: for each failed rule, extract its `.main` field into a separate
 `/tmp/pipeline_diag_rN_main.txt` file. Then use Read/Grep (auto-approved) to
 classify errors.
+
+**Total user approvals for the entire diagnostic: exactly 2** (one SSH per phase).
+All parsing after each SSH uses Read/Grep which are auto-approved. Do NOT run
+additional Bash commands for parsing — that would add unnecessary confirmations.
 
 ## Step 4: Classify Errors
 
