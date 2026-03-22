@@ -49,7 +49,7 @@ parse without further Bash calls.
 ```bash
 ssh HOST "cd DIR && bash -c '
   jq -n \
-    --rawfile sm_log <(ls -1t .snakemake/log/*.snakemake.log 2>/dev/null | head -1 | xargs -r tail -300) \
+    --rawfile sm_log <({ ls -1t .snakemake/log/*.snakemake.log 2>/dev/null | head -1 | xargs -r tail -300; } || true; echo \"__END__\") \
     --rawfile log_listing <(ls -lt log/*.log 2>/dev/null || echo \"no log directory\") \
     --rawfile slurm <(sacct --format=JobID,JobName,State,ExitCode,Start,End,MaxRSS \
       --starttime \$(date --date=\"24 hours ago\" +%Y-%m-%d) -n 2>/dev/null || echo \"sacct unavailable\") \
