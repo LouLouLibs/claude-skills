@@ -1,6 +1,6 @@
 ---
 name: pr-walkthrough
-description: Use when a branch is ready for a pull request and the human wants to review the change before approving/merging — "walkthrough", "review before merge", "PR review doc", "explain this diff for approval". Produces a reviewer-facing HTML walkthrough in the munis_home house style.
+description: Use when a branch is ready for a pull request and the human wants to review the change before approving/merging — "walkthrough", "review before merge", "PR review doc", "explain this diff for approval". Produces a reviewer-facing HTML walkthrough in the house style (portable across repos; only needs pandoc).
 ---
 
 # PR Walkthrough for Human Review
@@ -11,17 +11,22 @@ Produce a **reviewer-facing** HTML walkthrough that tells the story behind a dif
 
 **Core principle:** Separate *what is already proven safe* (so they don't re-verify it) from *what needs their judgment* (so they spend attention there). End with a checklist of the actual judgment calls.
 
-This skill is tuned for the `munis_home` repo conventions (docs/PRs, `render_spec.sh`, `review.css`).
+## The Iron Rule: author Markdown, render with a script
 
-## The Iron Rule: author Markdown, render with the script
-
-**ALWAYS write the walkthrough as Markdown, then render it with `utilities/bash/render_spec.sh`.**
+**ALWAYS write the walkthrough as Markdown, then render it to self-contained HTML with a renderer — pick the first that applies:**
 
 ```bash
-./utilities/bash/render_spec.sh docs/PRs/<name>.md   # writes <name>.html, CSS inlined
+# 1. In the munis_home repo (preferred there — single source of truth for the CSS):
+./utilities/bash/render_spec.sh docs/PRs/<name>.md
+
+# 2. In ANY repo (portable fallback — bundled with this skill, only needs pandoc):
+"$(dirname "$(realpath ~/.claude/skills/pr-walkthrough)")/pr-walkthrough/render-walkthrough.sh" <name>.md
+# (or just call the script by its path inside the skill dir: .../skills/pr-walkthrough/render-walkthrough.sh)
 ```
 
-**NEVER hand-author the HTML. NEVER invent CSS classes** (`.finding`, `.verdict-table`, severity divs, …). The house style (`utilities/typesetting/css/review.css`) is inlined by the renderer; convey status with prose, tables, and emoji (🔍 ✅ ⚠️), not custom CSS.
+Both emit `<name>.html` with the house CSS (`review.css`) inlined — identical pandoc invocation, identical look. The only external dependency is **pandoc** (`brew install pandoc`); `render_spec.sh` and the house `review.css` live ONLY in munis_home, which is why the skill bundles its own copy for portability.
+
+**NEVER hand-author the HTML. NEVER invent CSS classes** (`.finding`, `.verdict-table`, severity divs, …). The CSS is inlined by the renderer; convey status with prose, tables, and emoji (🔍 ✅ ⚠️), not custom CSS.
 
 | Rationalization | Reality |
 |---|---|
@@ -48,7 +53,7 @@ Date = today (generation date). Commit the `.md` **and** `.html` to the branch s
 2. **Find the human-judgment spots.** Scan for: intentional behavior choices, anything that trades correctness for compatibility, deletions that *look* load-bearing, downgraded checks (`@assert`→`@warn`), discoveries surfaced but not fixed. These become the 🔍 section.
 3. **Identify what's already proven** — tests passing, byte-identity checks, CI — so the reviewer can skip re-deriving it.
 4. **Write the Markdown** using the section structure below; quote real code hunks.
-5. **Render** with `render_spec.sh`; confirm self-contained:
+5. **Render** with the appropriate script (see the Iron Rule above); confirm self-contained:
    ```bash
    rg -c '<style' <name>.html && rg -c '<link' <name>.html   # expect ≥1 style, 0 link
    ```
