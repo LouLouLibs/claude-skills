@@ -12,10 +12,14 @@ jobs:
   # that have no FHS dynamic linker.
   linux-x86_64:
     runs-on: ubuntu-latest
-    container: ocaml/opam:alpine
+    container:
+      image: ocaml/opam:alpine
+      # The image sets USER opam, which cannot write the runner's mounted
+      # temp dirs (actions/checkout fails with EACCES); run as root instead.
+      options: --user root
     env:
-      # Steps run as root inside the container; reuse the image's prebuilt
-      # opam switch (owned by the `opam` user) instead of building a compiler.
+      # Steps run as root; reuse the image's prebuilt opam switch (owned by
+      # the `opam` user) instead of building a compiler from scratch.
       OPAMROOT: /home/opam/.opam
       OPAMROOTISOK: "1"
       OPAMYES: "1"
