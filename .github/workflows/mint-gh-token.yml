@@ -29,6 +29,9 @@ jobs:
         run: apk add --no-cache bash curl openssl python3
       - name: Install OCaml dependencies
         run: |
+          # The opam root's git repos are owned by `opam`; we run as root, so
+          # git would refuse them with "dubious ownership".
+          git config --global --add safe.directory '*'
           opam update
           opam install dune x509 base64 yojson ptime mirage-crypto-rng
       - name: Build (static)
