@@ -6,4 +6,4 @@
 ; static binary that runs on any Linux, including NixOS microVM guests.
 (env
  (static
-  (link_flags (-ccopt -static))))
+  (link_flags (-ccopt -static -ccopt -s))))

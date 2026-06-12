@@ -39,9 +39,8 @@ jobs:
         working-directory: skills/mint-gh-token/src
         run: |
           opam exec -- dune build --profile static
-          file _build/default/mint_gh_token.exe
-          ldd _build/default/mint_gh_token.exe 2>&1 | grep -qi 'not a\|statically' \
-            || { echo "binary is not static"; exit 1; }
+          file _build/default/mint_gh_token.exe | tee /tmp/file.out
+          grep -q 'static' /tmp/file.out || { echo "binary is not static"; exit 1; }
       - name: Smoke test
         working-directory: skills/mint-gh-token
         run: ./test/run_test.sh src/_build/default/mint_gh_token.exe
