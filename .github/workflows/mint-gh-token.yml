@@ -41,6 +41,7 @@ jobs:
           opam exec -- dune build --profile static
           file _build/default/mint_gh_token.exe | tee /tmp/file.out
           grep -q 'static' /tmp/file.out || { echo "binary is not static"; exit 1; }
+          ./_build/default/mint_gh_token.exe --help  # catches startup crashes early
       - name: Smoke test
         working-directory: skills/mint-gh-token
         run: ./test/run_test.sh src/_build/default/mint_gh_token.exe
