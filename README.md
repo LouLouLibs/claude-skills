@@ -31,6 +31,7 @@ These skills use [xl-cli-tools](https://github.com/LouLouLibs/xl-cli-tools), whi
 | Skill | Purpose |
 |-------|---------|
 | `esync-setup` | Set up [esync](https://github.com/LouLouLibs/esync) file synchronization |
+| `mint-gh-token` | Mint short-lived GitHub App installation tokens for HTTPS git/gh auth (OCaml; binaries on [releases](https://github.com/LouLouLibs/claude-skills/releases)) |
 | `julia-release` | Tag Julia package versions and update registry |
 | `debug-remote-pipeline` | Debug remote Snakemake pipelines via SSH |
 

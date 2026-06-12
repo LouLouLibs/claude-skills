@@ -1,0 +1,87 @@
+name: mint-gh-token
+
+on:
+  push:
+    tags: ["mint-gh-token-v*"]
+  pull_request:
+    paths: ["skills/mint-gh-token/**", ".github/workflows/mint-gh-token.yml"]
+  workflow_dispatch:
+
+jobs:
+  # Static musl binary: runs on any Linux, including NixOS microVM guests
+  # that have no FHS dynamic linker.
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    container: ocaml/opam:alpine
+    env:
+      # Steps run as root inside the container; reuse the image's prebuilt
+      # opam switch (owned by the `opam` user) instead of building a compiler.
+      OPAMROOT: /home/opam/.opam
+      OPAMROOTISOK: "1"
+      OPAMYES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test dependencies
+        run: apk add --no-cache bash curl openssl python3
+      - name: Install OCaml dependencies
+        run: |
+          opam update
+          opam install dune x509 base64 yojson ptime mirage-crypto-rng
+      - name: Build (static)
+        working-directory: skills/mint-gh-token/src
+        run: |
+          opam exec -- dune build --profile static
+          file _build/default/mint_gh_token.exe
+          ldd _build/default/mint_gh_token.exe 2>&1 | grep -qi 'not a\|statically' \
+            || { echo "binary is not static"; exit 1; }
+      - name: Smoke test
+        working-directory: skills/mint-gh-token
+        run: ./test/run_test.sh src/_build/default/mint_gh_token.exe
+      - name: Stage artifact
+        run: cp skills/mint-gh-token/src/_build/default/mint_gh_token.exe mint-gh-token-linux-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mint-gh-token-linux-x86_64
+          path: mint-gh-token-linux-x86_64
+
+  darwin-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+      - name: Install OCaml dependencies
+        run: opam install -y dune x509 base64 yojson ptime mirage-crypto-rng
+      - name: Build
+        working-directory: skills/mint-gh-token/src
+        run: opam exec -- dune build --profile release
+      - name: Smoke test
+        working-directory: skills/mint-gh-token
+        run: ./test/run_test.sh src/_build/default/mint_gh_token.exe
+      - name: Stage artifact
+        run: cp skills/mint-gh-token/src/_build/default/mint_gh_token.exe mint-gh-token-darwin-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mint-gh-token-darwin-arm64
+          path: mint-gh-token-darwin-arm64
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/mint-gh-token-v')
+    needs: [linux-x86_64, darwin-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Static linux-x86_64 and darwin-arm64 builds of mint-gh-token. See skills/mint-gh-token/SKILL.md."
