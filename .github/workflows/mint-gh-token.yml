@@ -25,8 +25,9 @@ jobs:
       OPAMYES: "1"
     steps:
       - uses: actions/checkout@v4
-      - name: Install test dependencies
-        run: apk add --no-cache bash curl openssl python3
+      - name: Install test and link dependencies
+        # gmp-static: zarith (under mirage-crypto-pk) needs libgmp.a for -static
+        run: apk add --no-cache bash curl openssl python3 gmp-static
       - name: Install OCaml dependencies
         run: |
           # The opam root's git repos are owned by `opam`; we run as root, so
