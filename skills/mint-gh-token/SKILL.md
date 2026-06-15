@@ -80,10 +80,18 @@ Source lives in `src/` (single-file OCaml, dune project). CI
 matching `mint-gh-token-v*`. Local build:
 
 ```bash
-cd src && dune build          # needs x509, base64, yojson, ptime, mirage-crypto-rng
-# on NixOS, without an opam setup:
-nix-shell -p ocaml dune_3 ocamlPackages.findlib ocamlPackages.x509 \
-  ocamlPackages.base64 ocamlPackages.yojson ocamlPackages.ptime \
-  ocamlPackages.mirage-crypto-rng --run 'cd src && dune build'
-./test/run_test.sh src/_build/default/mint_gh_token.exe   # needs python3, openssl, curl
+# With an opam switch that has the deps (x509, base64, yojson, ptime,
+# mirage-crypto-rng), just:
+cd src && dune build
+
+# On NixOS, use the committed flake devShell (flake.nix), which pins the
+# full library closure — including `logs`, without which
+# mirage-crypto-rng.unix fails to link:
+nix develop -c dune build --root src
+# or, with direnv: `direnv allow` once, then plain `dune build` in src/.
+
+# The test suite additionally needs openssl + python3 (the RSA key and the
+# stub GitHub API server); curl is already in the devShell:
+nix shell nixpkgs#openssl -c nix develop -c \
+  ./test/run_test.sh src/_build/default/mint_gh_token.exe
 ```

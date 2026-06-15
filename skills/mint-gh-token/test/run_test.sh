@@ -74,4 +74,23 @@ fi
 echo "$OUT" | grep -q "GH_APP_KEY" || fail "unhelpful error: $OUT"
 echo "ok 6 - clean error when key missing"
 
+# --- 7. a poisoned cache silently re-mints, never crashes (issue #1) -----------
+# Each variant is a cache file the reader must treat as "no cache, re-mint":
+#   int-typed   - the legacy Python minter wrote token/expires_at as ints
+#   missing     - a field absent entirely
+#   garbage     - not even JSON
+for variant in \
+  'int-typed:{"token": 12345, "expires_at": 1800000000}' \
+  'missing-field:{"token": "x"}' \
+  'garbage:not json at all'; do
+  name="${variant%%:*}"
+  body="${variant#*:}"
+  printf '%s' "$body" > "$GH_TOKEN_CACHE"
+  if ! TOK=$("$BIN" 2>"$TMP/stderr.log"); then
+    fail "poisoned cache ($name) crashed instead of re-minting: $(cat "$TMP/stderr.log")"
+  fi
+  [ "$TOK" = "ghs_stubtoken1234567890" ] || fail "poisoned cache ($name) did not re-mint, got: $TOK"
+done
+echo "ok 7 - poisoned cache (int/missing/garbage) re-mints, no crash"
+
 echo "all tests passed"

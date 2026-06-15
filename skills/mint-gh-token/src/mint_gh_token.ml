@@ -69,23 +69,27 @@ let seconds_until rfc3339 =
   | Error _ -> None
 
 (* Returns [Some token] only if the cache file exists, parses, and has more
-   than the refresh margin left. Any failure mode just means "no cache". *)
+   than the refresh margin left. Any failure mode just means "no cache" — the
+   whole body is guarded so a malformed or foreign-schema cache (e.g. the
+   legacy Python minter wrote [expires_at] as an int epoch, which
+   [to_string_option] rejects with a [Type_error]) silently re-mints instead
+   of crashing. *)
 let cached_token path =
-  match Yojson.Safe.from_string (read_file path) with
-  | exception _ -> None  (* missing file, unreadable, or invalid JSON *)
-  | json -> (
-      let open Yojson.Safe.Util in
-      match
-        (member "token" json |> to_string_option,
-         member "expires_at" json |> to_string_option)
-      with
-      | Some token, Some expires -> (
-          match seconds_until expires with
-          | Some remaining when remaining > refresh_margin_s ->
-              note "cached token reused (%.0f min left)" (remaining /. 60.);
-              Some token
-          | _ -> None)
-      | _ -> None)
+  try
+    let json = Yojson.Safe.from_string (read_file path) in
+    let open Yojson.Safe.Util in
+    match
+      (member "token" json |> to_string_option,
+       member "expires_at" json |> to_string_option)
+    with
+    | Some token, Some expires -> (
+        match seconds_until expires with
+        | Some remaining when remaining > refresh_margin_s ->
+            note "cached token reused (%.0f min left)" (remaining /. 60.);
+            Some token
+        | _ -> None)
+    | _ -> None
+  with _ -> None  (* missing file, unreadable, invalid JSON, or foreign schema *)
 
 (* Best effort: returns [false] on failure instead of raising, because by
    the time we write the cache the token is already minted — losing it to a
