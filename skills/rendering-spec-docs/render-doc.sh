@@ -38,7 +38,7 @@ pandoc \
   --embed-resources \
   --metadata "title=$(basename "$src" .md)" \
   --css "$css" \
-  --syntax-highlighting=pygments \
+  --highlight-style=pygments \
   -o "$out" \
   "$src"
 
