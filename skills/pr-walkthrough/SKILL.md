@@ -38,10 +38,10 @@ Both emit `<name>.html` with the house CSS (`review.css`) inlined — identical 
 
 Per `docs/PRs/README.md`:
 ```
-docs/PRs/YYYY-MM-DD-issue<N>-pr<M>-<short-kebab-desc>.html   # ≤40-char desc
-docs/PRs/YYYY-MM-DD-issues<N1>-<N2>-prs<M1>-<M2>-<desc>.html  # series
+docs/PRs/YYYYMMDD-HHMM-issue<N>-pr<M>-<short-kebab-desc>.html   # ≤40-char desc
+docs/PRs/YYYYMMDD-HHMM-issues<N1>-<N2>-prs<M1>-<M2>-<desc>.html  # series
 ```
-Date = today (generation date). Commit the `.md` **and** `.html` to the branch so the walkthrough travels with the PR and survives the merge.
+Timestamp = generation date and time (`date +%Y%m%d-%H%M`). Commit the `.md` **and** `.html` to the branch so the walkthrough travels with the PR and survives the merge.
 
 ## Process
 
@@ -50,7 +50,7 @@ Date = today (generation date). Commit the `.md` **and** `.html` to the branch s
    git diff --stat main...<branch>
    git diff main...<branch> -- <file>     # pull exact hunks to quote
    ```
-2. **Find the human-judgment spots.** Scan for: intentional behavior choices, anything that trades correctness for compatibility, deletions that *look* load-bearing, downgraded checks (`@assert`→`@warn`), discoveries surfaced but not fixed. These become the 🔍 section.
+2. **Find the human-judgment spots.** Scan for: intentional behavior choices, anything that trades correctness for compatibility, deletions that *look* load-bearing, downgraded checks (`@assert`→`@warn`), discoveries surfaced but not fixed. For data/quant changes also scan for the silent landmines tests rarely catch: **lookahead / data leakage** (information from the test or future period leaking into training/in-sample, scalers or stats fit on the full sample), a changed **metric, threshold, or acceptance bar**, **hardcoded paths or magic parameters**, **dependency / environment pin** changes that move results, and silent **missing-value / outlier / schema** handling. These become the 🔍 section.
 3. **Identify what's already proven** — tests passing, byte-identity checks, CI — so the reviewer can skip re-deriving it.
 4. **Write the Markdown** using the section structure below; quote real code hunks.
 5. **Render** with the appropriate script (see the Iron Rule above); confirm self-contained:
@@ -64,8 +64,8 @@ Date = today (generation date). Commit the `.md` **and** `.html` to the branch s
 Adapt headings to the change, but keep this spine (full skeleton in `walkthrough-template.md`):
 
 - **Header line** — issue/PR/branch/date links.
-- **TL;DR — what to know before approving** — 4–6 bullets: size, the safety guarantee, the one discovery, where to look.
-- **The safety contract / verification** — what was checked and how (tests, byte-identity, CI), so the reviewer doesn't re-verify. State plainly: *you don't need to re-derive X*.
+- **TL;DR — what to know before approving** — 4–6 bullets: size, the safety guarantee, the one discovery, where to look. State the size honestly: if the diff is large or spans more than one logical change, say so and point to the riskiest slice — oversized PRs get superficial review.
+- **The safety contract / verification** — what was checked and how (tests, byte-identity, CI), so the reviewer doesn't re-verify. State plainly: *you don't need to re-derive X*. For data/quant changes, fold in the **reproducibility** facts the reviewer would otherwise have to chase: results reproduce (bit-for-bit or within stated tolerance), environment/dependencies pinned, and the data version/source recorded.
 - **The nuance(s) to scrutinize 🔍** — the heart of the doc. For each judgment call: quote the before/after hunk, explain the choice, and say explicitly what the reviewer should confirm or push back on.
 - **Discoveries** — anything surfaced (e.g. a pre-existing bug) that the PR does *not* fix, with a table/example and why it's out of scope.
 - **The rest, by theme** — lower-risk changes grouped by intent (not file-by-file), one tight code snippet each.
