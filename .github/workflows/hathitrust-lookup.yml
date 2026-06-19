@@ -1,0 +1,94 @@
+name: hathitrust-lookup
+
+on:
+  push:
+    tags: ["hathitrust-lookup-v*"]
+  pull_request:
+    paths: ["skills/hathitrust-lookup/**", ".github/workflows/hathitrust-lookup.yml"]
+  workflow_dispatch:
+
+jobs:
+  # Static musl binary: runs on any Linux, including NixOS microVM guests
+  # that have no FHS dynamic linker.
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    container:
+      image: ocaml/opam:alpine
+      # The image sets USER opam, which cannot write the runner's mounted
+      # temp dirs (actions/checkout fails with EACCES); run as root instead.
+      options: --user root
+    env:
+      # Steps run as root; reuse the image's prebuilt opam switch (owned by
+      # the `opam` user) instead of building a compiler from scratch.
+      OPAMROOT: /home/opam/.opam
+      OPAMROOTISOK: "1"
+      OPAMYES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test and link dependencies
+        run: apk add --no-cache bash curl python3
+      - name: Install OCaml dependencies
+        run: |
+          # The opam root's git repos are owned by `opam`; we run as root, so
+          # git would refuse them with "dubious ownership".
+          git config --global --add safe.directory '*'
+          opam update
+          opam install dune yojson
+      - name: Build (static)
+        working-directory: skills/hathitrust-lookup/src
+        run: |
+          opam exec -- dune build --profile static
+          file _build/default/ht_lookup.exe | tee /tmp/file.out
+          grep -q 'static' /tmp/file.out || { echo "binary is not static"; exit 1; }
+          ./_build/default/ht_lookup.exe --help  # catches startup crashes early
+      - name: Smoke test
+        working-directory: skills/hathitrust-lookup
+        run: ./test/run_test.sh src/_build/default/ht_lookup.exe
+      - name: Stage artifact
+        run: cp skills/hathitrust-lookup/src/_build/default/ht_lookup.exe ht-lookup-linux-x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ht-lookup-linux-x86_64
+          path: ht-lookup-linux-x86_64
+
+  darwin-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5
+      - name: Install OCaml dependencies
+        run: opam install -y dune yojson
+      - name: Build
+        working-directory: skills/hathitrust-lookup/src
+        run: opam exec -- dune build --profile release
+      - name: Smoke test
+        working-directory: skills/hathitrust-lookup
+        run: ./test/run_test.sh src/_build/default/ht_lookup.exe
+      - name: Stage artifact
+        run: cp skills/hathitrust-lookup/src/_build/default/ht_lookup.exe ht-lookup-darwin-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ht-lookup-darwin-arm64
+          path: ht-lookup-darwin-arm64
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/hathitrust-lookup-v')
+    needs: [linux-x86_64, darwin-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Static linux-x86_64 and darwin-arm64 builds of ht-lookup. See skills/hathitrust-lookup/SKILL.md."
