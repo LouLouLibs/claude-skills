@@ -14,6 +14,8 @@
 | `nclq` | [nclq](https://github.com/LouLouLibs/nclq) | Query Nickel (.ncl) files |
 | `wrds-download` | [wrds-download](https://github.com/LouLouLibs/wrds-download) | Download WRDS data (Go) |
 | `wrds-download-py` | [wrds-download](https://github.com/LouLouLibs/wrds-download) | Download WRDS data (Python/uv) |
+| `hathitrust-lookup` | `ht-lookup` (OCaml; binaries on [releases](https://github.com/LouLouLibs/claude-skills/releases)) | Look up HathiTrust records by identifier (OCLC/LCCN/ISBN/ISSN/htid/record no.) |
+| `hathifiles` | `hathifiles` (OCaml; binaries on [releases](https://github.com/LouLouLibs/claude-skills/releases)) | List/download/query HathiTrust bulk metadata dumps (~18M rows; query via dt-cli-tools) |
 
 ### Excel (legacy)
 
