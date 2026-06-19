@@ -1,0 +1,11 @@
+(executable
+ (name hathifiles)
+ (libraries unix yojson))
+
+; `dune build --profile static` (used by CI on Alpine/musl) produces a fully
+; static binary that runs on any Linux, including NixOS microVM guests.
+(env
+ (static
+  ; -no-pie: Alpine's gcc defaults to PIE, and the resulting static-pie
+  ; executable segfaults at startup with the OCaml runtime.
+  (link_flags (-ccopt -static -ccopt -no-pie -ccopt -s))))
