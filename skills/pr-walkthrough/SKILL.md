@@ -41,7 +41,7 @@ Per `docs/PRs/README.md`:
 docs/PRs/YYYYMMDD-HHMM-issue<N>-pr<M>-<short-kebab-desc>.html   # ≤40-char desc
 docs/PRs/YYYYMMDD-HHMM-issues<N1>-<N2>-prs<M1>-<M2>-<desc>.html  # series
 ```
-Timestamp = generation date and time (`date +%Y%m%d-%H%M`). Commit the `.md` **and** `.html` to the branch so the walkthrough travels with the PR and survives the merge.
+Timestamp = generation date and time in **local time**. Get it by actually running `date +%Y%m%d-%H%M` (which prints local time) — do **not** infer it from the session date/`currentDate` context, which is UTC and has no local time-of-day. Commit the `.md` **and** `.html` to the branch so the walkthrough travels with the PR and survives the merge.
 
 ## Process
 
