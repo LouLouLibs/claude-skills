@@ -48,8 +48,11 @@ bash install.sh
 Or install individual skills:
 
 ```bash
-ln -s "$(pwd)/skills/dtcat" ~/.claude/skills/dtcat
+cp -R "$(pwd)/skills/dtcat" ~/.claude/skills/dtcat
 ```
+
+Skills are copied (not symlinked) so they're also picked up inside VMs and
+sandboxes where this repo checkout isn't mounted.
 
 Skills are available immediately in new Claude Code sessions.
 
