@@ -28,6 +28,12 @@ These skills use [xl-cli-tools](https://github.com/LouLouLibs/xl-cli-tools), whi
 | `xlfilter` | [xl-cli-tools](https://github.com/LouLouLibs/xl-cli-tools) | Filter and query Excel data |
 | `xldiff` | [go-xldiff](https://github.com/LouLouLibs/go-xldiff) | Diff two Excel sheets |
 
+### Audio
+
+| Skill | Tool | Purpose |
+|-------|------|---------|
+| `dictate` | [dictate](https://github.com/LouLouLibs/dictate) | Transcribe recordings to Markdown locally with WhisperKit; vocabulary-seeded spelling; record from the terminal |
+
 ### Workflow
 
 | Skill | Purpose |
