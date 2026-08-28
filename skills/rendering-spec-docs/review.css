@@ -1,6 +1,6 @@
 /* review.css — house style for HTML reviews, reports, and LLM→human documents.
    Times-Roman body + Helvetica headings + warm palette + accent-border motif.
-   Bundled copy for the pr-walkthrough skill so it is portable across repos.
+   Bundled copy for the rendering-spec-docs skill so it is portable across repos.
    Source of truth: munis_home/utilities/typesetting/css/review.css */
 
 :root {

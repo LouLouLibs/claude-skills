@@ -2,18 +2,18 @@
 
 **Issue:** [#<N>](…) · **PR:** [#<M>](…) · **Branch:** `<branch>` · **Date:** YYYY-MM-DD
 
-<One-paragraph framing: what kind of change this is (feature / refactor / bugfix / refactor+guards) and the single most important thing about its risk profile.>
+<One-paragraph framing: what kind of change this is (feature / refactor / bugfix / refactor+guards) and the single most important thing about its risk profile.>[^history]
 
----
+[^history]: <Background the reviewer may want but need not read: how long the old code has been there, the issue comment where this was agreed, the commit that introduced the thing being replaced.>
 
 ## TL;DR — what to know before approving
 
 - **Size.** N files, +X / −Y. Which ones are substantive vs trivial.
 - **The guarantee.** The one safety property that holds (e.g. "outputs byte-stable", "no API change", "fully covered by tests") and that it was checked.
-- **The discovery / the catch**, if any — one line.
+- **The discovery / the catch**, if any — one line.[^how-found]
 - **Where to look.** Point at the 🔍 section.
 
----
+[^how-found]: <The exact command and output that establishes the catch, e.g. `rg -c '"[^"]*,[^"]*"' data/raw/2022.csv → 3`.>
 
 ## The safety contract (and how it was verified)
 
@@ -25,26 +25,21 @@
 
 > **Why this matters for your review:** you do **not** need to re-derive <X>; it's proven. Spend your attention on the judgment call(s) below.
 
----
-
 ## The nuance to scrutinize 🔍
 
 <For each thing that required a human judgment call. This is the heart of the doc.>
 
-### <name of the choice>
+### <what is decided here, ≤ 8 words>
 
-```julia
-# BEFORE
-<real hunk from `git diff main...<branch>`>
-```
-```julia
-# AFTER
-<real hunk>
+```diff
+<real hunk from `git diff main...<branch> -- <file>`, trimmed; keep the @@ header>
 ```
 
-**What to confirm:** <state plainly what the reviewer should sanity-check or push back on, and why the choice was made this way.>
+<Or, when the rewrite is semantic and a line diff would be noise, two fences in the language, `# BEFORE` and `# AFTER`.>
 
----
+**What to confirm:** <state plainly what the reviewer should sanity-check or push back on, and why the choice was made this way.>[^why-not]
+
+[^why-not]: <The alternative that was rejected and the one-line reason, or the doc/codebook page that justifies the rule.>
 
 ## The discovery: <one line>
 
@@ -54,17 +49,13 @@
 |---|---|---|
 | … | … | … |
 
----
-
 ## The rest of the changes (lower-risk, by theme)
 
-### 1. <theme>
+### <theme>
 <one tight snippet + one or two sentences of why>
 
-### 2. <theme>
+### <theme>
 …
-
----
 
 ## Suggested approval checklist
 
@@ -74,7 +65,6 @@
 
 <One sentence: if all sit right, this is a clean merge because <the proven property>.>
 
----
-
 ## Deferred (recorded, not in this PR)
+
 - **<item>** — <why it's separate / which issue tracks it>.

@@ -1,0 +1,517 @@
+/* walkthrough.css — stylesheet for the pr-walkthrough renderer.
+   Layout after anil.recoil.org's notes: a ~42rem reading column, a sticky
+   "contents" box top-right that tracks the section being read, and Markdown
+   footnotes lifted into the margin as sidenotes (walkthrough.html holds the
+   page shell and the script that does the lifting). Light/dark follow the OS.
+   Only markup pandoc itself emits is styled — walkthrough authors never add
+   classes or HTML. */
+
+:root {
+  --bg: #fffffc;
+  --surface: #f6f8fa;
+  --surface-alt: #f3f4f6;
+  --nav-from: #f8faf8;
+  --nav-to: #f6f8f6;
+  --text: #000000;
+  --secondary: #555555;
+  --muted: #777777;
+  --faint: #999999;
+  --link: #090c8d;
+  --link-ul: #bbbbff;
+  --border: #e5e7eb;
+  --border-nav: #e0e2e0;
+  --border-light: #dddddd;
+  --accent: #22c55e;
+  --note: #5b6abf;
+  --toc-bg: #e0e7ff;
+  --bq-text: #4a4a4a;
+  --topbar-h: 2.6rem;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-alt: #1c2128;
+    --nav-from: #0d1117;
+    --nav-to: #111518;
+    --text: #e6edf3;
+    --secondary: #8b949e;
+    --muted: #6e7681;
+    --faint: #8b949e;
+    --link: #7dd3a0;
+    --link-ul: #3d7a5488;
+    --border: #30363d;
+    --border-nav: #21262d;
+    --border-light: #30363d;
+    --accent: #3fb950;
+    --note: #7dd3a0;
+    --toc-bg: #1c2654;
+    --bq-text: #b1bac4;
+  }
+}
+
+/* ---------- page frame ---------- */
+
+html {
+  font-size: 110%;
+  background: var(--bg);
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--topbar-h) + 1rem);
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.wrap {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+#topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(to bottom, var(--nav-from), var(--nav-to));
+  border-bottom: 1px solid var(--border-nav);
+}
+#topbar .wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-height: var(--topbar-h);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  box-sizing: border-box;
+}
+.prompt {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  user-select: none;
+}
+.kicker {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.topbar-title {
+  color: var(--secondary);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.topbar-title code { font-size: 0.72rem; }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 1.75rem;
+  padding-bottom: 5rem;
+}
+.article {
+  flex: 1 1 auto;
+  max-width: 42rem;
+  min-width: 0;
+}
+.sidebar {
+  order: -1;            /* narrow screens: contents above the article */
+  position: relative;
+}
+.side-inner {
+  position: relative;
+  height: 100%;
+}
+@media (min-width: 1024px) {
+  .page { flex-direction: row; gap: 2.5rem; }
+  .sidebar { order: 0; width: 18rem; flex: 0 0 18rem; }
+}
+
+/* ---------- title block + meta line ---------- */
+
+#title-block-header { margin: 0 0 0.9rem; }
+h1.title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.35rem;
+}
+.subtitle { color: var(--secondary); margin: 0; }
+/* The first paragraph after the title is the Issue · PR · Branch · Date line. */
+#title-block-header + p {
+  font-size: 0.78rem;
+  color: var(--secondary);
+  margin: 0 0 1.4rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+#title-block-header + p strong { color: var(--muted); font-weight: 600; }
+
+/* ---------- section headings (numbered by pandoc) ---------- */
+
+.article h1:not(.title),
+.article h2,
+.article h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.006em;
+  scroll-margin-top: calc(var(--topbar-h) + 1rem);
+}
+.article h1:not(.title) { font-size: 1.12rem; margin: 2rem 0 0.6rem; }
+.article h2 { font-size: 0.98rem; margin: 1.5rem 0 0.5rem; }
+.article h3 { font-size: 0.9rem; margin: 1.2rem 0 0.4rem; color: var(--secondary); }
+.header-section-number {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.82em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.35em;
+}
+
+/* ---------- running text ---------- */
+
+p { margin: 0 0 0.85rem; }
+ul, ol { margin: 0 0 0.85rem; padding-left: 1.4rem; }
+li { margin: 0.2rem 0; }
+li > p { margin: 0 0 0.4rem; }
+li > ul, li > ol { margin-bottom: 0.2rem; }
+strong { font-weight: 600; }
+hr { border: 0; border-top: 1px solid var(--border); margin: 1.6rem 0; }
+img { max-width: 100%; height: auto; }
+
+a {
+  color: var(--link);
+  text-decoration: underline dotted;
+  text-decoration-color: var(--link-ul);
+  text-underline-offset: 2px;
+}
+a:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--link);
+}
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+blockquote {
+  position: relative;
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  color: var(--bq-text);
+  font-style: italic;
+}
+blockquote::before {
+  content: "\201C";
+  position: absolute;
+  top: -0.2rem;
+  left: 0.35rem;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.18;
+  font-style: normal;
+  pointer-events: none;
+}
+blockquote p:last-child { margin-bottom: 0; }
+blockquote strong { font-style: normal; }
+
+/* ---------- code ---------- */
+
+code, kbd, samp, tt { font-family: var(--mono); }
+:not(pre) > code {
+  font-size: 0.8em;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.12em 0.35em;
+}
+pre {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.55rem 0.8rem;
+  overflow-x: auto;
+  margin: 0 0 0.9rem;
+}
+pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+div.sourceCode { margin: 0 0 0.9rem; }
+pre.sourceCode { margin: 0; }
+/* BEFORE / AFTER pairs read as one exhibit */
+div.sourceCode + div.sourceCode { margin-top: -0.5rem; }
+
+/* diff fences: pandoc tags removed lines .st, added lines .va, hunk headers .dt.
+   The line span is inline-block in pandoc's own CSS; stretching it to the full
+   width lets the tint read as a whole line. */
+pre.sourceCode.diff code span.st { color: #b42318; }
+pre.sourceCode.diff code span.va { color: #067647; }
+pre.sourceCode.diff code span.dt { color: var(--muted); font-style: italic; }
+pre.sourceCode.diff > code > span:has(> .st),
+pre.sourceCode.diff > code > span:has(> .va) { min-width: 100%; box-sizing: border-box; border-radius: 2px; }
+pre.sourceCode.diff > code > span:has(> .st) { background: #fdecec; }
+pre.sourceCode.diff > code > span:has(> .va) { background: #e6f6ec; }
+@media (prefers-color-scheme: dark) {
+  pre.sourceCode.diff code span.st { color: #ffa198; }
+  pre.sourceCode.diff code span.va { color: #7ee787; }
+  pre.sourceCode.diff > code > span:has(> .st) { background: #3a1d1d; }
+  pre.sourceCode.diff > code > span:has(> .va) { background: #12301f; }
+}
+
+/* pandoc's pygments palette is for light ground; re-ink it for dark */
+@media (prefers-color-scheme: dark) {
+  code span.kw, code span.cf, code span.pp, code span.im { color: #ff7b72; font-weight: normal; }
+  code span.fu, code span.ex { color: #d2a8ff; }
+  code span.st, code span.ch, code span.vs, code span.ss, code span.sc { color: #a5d6ff; }
+  code span.co, code span.do, code span.an, code span.cv, code span.in { color: #8b949e; font-style: italic; }
+  code span.dv, code span.fl, code span.bn, code span.cn, code span.bu, code span.at { color: #79c0ff; }
+  code span.dt, code span.va, code span.ot { color: #ffa657; }
+  code span.op { color: #e6edf3; }
+  code span.al, code span.er, code span.wa { color: #ffa198; font-weight: bold; }
+}
+
+/* ---------- tables ---------- */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+}
+th, td {
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--secondary);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-light);
+}
+td code, th code { font-size: 0.76em; }
+
+/* ---------- task lists (the approval checklist) ---------- */
+
+ul.task-list { padding-left: 0; }
+ul.task-list li { list-style: none; margin: 0.35rem 0; }
+ul.task-list input[type="checkbox"] {
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.6em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--accent);
+}
+
+/* ---------- footnotes → sidenotes ---------- */
+
+a.footnote-ref {
+  text-decoration: none;
+  color: var(--note);
+  font-weight: 500;
+  border-radius: 2px;
+  transition: background-color 0.15s;
+}
+a.footnote-ref sup {
+  font-size: 0.68em;
+  line-height: 0;
+  vertical-align: super;
+  margin-left: 1px;
+  font-variant-numeric: tabular-nums;
+}
+a.footnote-ref:hover, a.footnote-ref.active { background: var(--toc-bg); }
+
+#footnotes {
+  margin-top: 2.5rem;
+  font-size: 0.78rem;
+  color: var(--secondary);
+}
+#footnotes hr { margin: 0 0 0.8rem; }
+#footnotes ol { padding-left: 1.4rem; }
+#footnotes li { margin: 0.3rem 0; }
+#footnotes li:target { background: var(--toc-bg); border-radius: 3px; }
+a.footnote-back { text-decoration: none; margin-left: 0.3em; }
+body.has-sidenotes #footnotes { display: none; }
+
+#sidenotes {
+  position: relative;
+  margin-top: 1rem;
+  display: none;
+}
+@media (min-width: 1024px) { #sidenotes { display: block; } }
+.sidenote {
+  position: absolute;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  border-left: 2px solid var(--border-light);
+  padding: 0.1rem 0 0.1rem 0.55rem;
+  opacity: 0;
+  transition: border-color 0.2s, color 0.2s, opacity 0.3s ease-in;
+}
+#sidenotes.ready .sidenote { opacity: 1; }
+.sidenote:hover, .sidenote.active { border-color: var(--accent); color: var(--text); }
+.sidenote p { margin: 0 0 0.3rem; }
+.sidenote p:last-child { margin-bottom: 0; }
+.sidenote code { font-size: 0.68rem; }
+.sidenote pre { font-size: 0.66rem; padding: 0.35rem 0.5rem; }
+.sidenote-number {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--note);
+  margin-right: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- contents box ---------- */
+
+.box {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.box-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.toc-top {
+  margin-left: auto;
+  color: var(--secondary);
+  text-decoration: none;
+  font-family: var(--mono);
+}
+.toc-top:hover { color: var(--link); text-decoration: none; }
+
+#TOC {
+  padding: 0.3rem;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+#TOC ul { list-style: none; margin: 0; padding: 0; }
+#TOC li { margin: 0; }
+#TOC a {
+  position: relative;
+  display: block;
+  padding: 0.14rem 0.35rem 0.14rem 2.1em;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--secondary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+#TOC a:hover { color: var(--link); }
+#TOC a code { font-size: 0.66rem; padding: 0 0.25em; }
+.toc-section-number {
+  position: absolute;
+  left: 0.35rem;
+  width: 1.4em;
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+/* Subsections hang off a thread running down the left of the group. The
+   last row draws only the top half of the thread to close it off. */
+#TOC ul ul a { padding-left: 3.5em; }
+#TOC ul ul .toc-section-number { left: 1.55em; width: 1.7em; }
+#TOC ul ul a::before {
+  content: "";
+  position: absolute;
+  left: 0.75em;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--muted);
+  opacity: 0.45;
+}
+#TOC ul ul li:last-child > a::before { bottom: auto; height: 50%; }
+#TOC ul ul a::after {
+  content: "";
+  position: absolute;
+  left: 0.75em;
+  top: 50%;
+  width: 0.45em;
+  height: 1px;
+  background: var(--muted);
+  opacity: 0.45;
+}
+#TOC a.passed, #TOC a.passed .toc-section-number { color: var(--link); }
+/* Only the section being read is filled, so the fill reads as progress. */
+#TOC a.active {
+  color: var(--link);
+  background: linear-gradient(to right,
+    var(--toc-bg) 0%, var(--toc-bg) var(--progress, 0%),
+    transparent var(--progress, 0%), transparent 100%);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+#TOC a.active .toc-section-number { color: var(--link); }
+
+@media (min-width: 1024px) {
+  .toc-box {
+    position: sticky;
+    top: calc(var(--topbar-h) + 0.75rem);
+    z-index: 20;
+  }
+  /* Fade the sidenotes out under the pinned box instead of cutting them off. */
+  .toc-box::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: 3rem;
+    background: linear-gradient(to bottom, var(--bg) 30%, transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  .toc-box.stuck::after { opacity: 1; }
+}
+
+/* ---------- print ---------- */
+
+@media print {
+  html { font-size: 100%; scroll-padding-top: 0; }
+  #topbar, .sidebar { display: none; }
+  .page { display: block; padding-top: 0; }
+  .article { max-width: none; }
+  body.has-sidenotes #footnotes { display: block; }
+  a { color: inherit; text-decoration: none; }
+  pre { white-space: pre-wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; }
+}

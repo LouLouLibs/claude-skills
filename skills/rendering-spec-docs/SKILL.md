@@ -16,7 +16,7 @@ command, and NEVER hand-write HTML or invent CSS.** Ad-hoc invocations drift
 from the house style and can't be re-rendered consistently.
 
 This is the general renderer. For PR *review* walkthroughs (a specific narrative
-structure), use `pr-walkthrough` instead — same house CSS.
+structure), use `pr-walkthrough` instead (it has its own page style: contents box, margin footnotes).
 
 ## How to render
 
