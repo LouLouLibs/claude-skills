@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<!-- walkthrough.html — pandoc template for the pr-walkthrough renderer.
+     Page shell: sticky top bar, reading column, right sidebar holding the
+     contents box (pandoc's --toc) and the sidenotes container. The script at
+     the foot lifts pandoc's footnotes into the margin and keeps the contents
+     box tracking the section being read. Everything is inlined by
+     --embed-resources; the output has no external dependencies. -->
+<html lang="$if(lang)$$lang$$else$en$endif$">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc $pandoc-version$ · pr-walkthrough" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
+  <style>
+    $styles.html()$
+  </style>
+$for(css)$
+  <link rel="stylesheet" href="$css$" />
+$endfor$
+$for(header-includes)$
+  $header-includes$
+$endfor$
+</head>
+<body>
+<span id="top"></span>
+<header id="topbar">
+  <div class="wrap">
+    <span class="prompt">&gt;_</span>
+    <span class="kicker">walkthrough</span>
+$if(title)$
+    <span class="topbar-title">$title$</span>
+$endif$
+  </div>
+</header>
+<div class="wrap page">
+  <main class="article">
+$if(title)$
+    <header id="title-block-header">
+      <h1 class="title">$title$</h1>
+$if(subtitle)$
+      <p class="subtitle">$subtitle$</p>
+$endif$
+    </header>
+$endif$
+$for(include-before)$
+$include-before$
+$endfor$
+$body$
+$for(include-after)$
+$include-after$
+$endfor$
+  </main>
+  <aside class="sidebar">
+    <div class="side-inner">
+$if(toc)$
+      <div class="toc-box">
+        <div class="box">
+          <div class="box-header"><span class="prompt">&gt;_</span> contents <a class="toc-top" href="#top" title="Back to top">↑</a></div>
+          <nav id="$idprefix$TOC" role="doc-toc">
+          $table-of-contents$
+          </nav>
+        </div>
+      </div>
+$endif$
+      <div id="sidenotes"></div>
+    </div>
+  </aside>
+</div>
+<script>
+(function () {
+  var WIDE = 1024; // px; below this the sidebar stacks above the article
+  var root = document.documentElement;
+  var topbar = document.getElementById('topbar');
+  function topbarHeight() { return topbar ? topbar.offsetHeight : 0; }
+  function setTopbarVar() { root.style.setProperty('--topbar-h', topbarHeight() + 'px'); }
+
+  /* ---- sidenotes: copy each pandoc footnote into the margin beside its ref ---- */
+  var container = document.getElementById('sidenotes');
+  var pairs = [];
+  function buildSidenotes() {
+    if (!container) return;
+    var items = document.querySelectorAll('#footnotes > ol > li');
+    Array.prototype.forEach.call(items, function (li) {
+      var ref = document.getElementById('fnref' + li.id.replace(/^fn/, ''));
+      if (!ref) return;
+      var note = document.createElement('div');
+      note.className = 'sidenote';
+      note.id = 'sidenote-' + li.id;
+      note.innerHTML = li.innerHTML;
+      var back = note.querySelector('a.footnote-back');
+      if (back) back.parentNode.removeChild(back);
+      var num = document.createElement('span');
+      num.className = 'sidenote-number';
+      num.textContent = ref.textContent.trim();
+      var host = note.querySelector('p') || note;
+      host.insertBefore(num, host.firstChild);
+      container.appendChild(note);
+      pairs.push({ ref: ref, note: note });
+
+      function on() { ref.classList.add('active'); note.classList.add('active'); }
+      function off() { ref.classList.remove('active'); note.classList.remove('active'); }
+      ref.addEventListener('mouseenter', on);
+      ref.addEventListener('mouseleave', off);
+      note.addEventListener('mouseenter', on);
+      note.addEventListener('mouseleave', off);
+      // With the note already in view beside the ref, a click just flashes it;
+      // on narrow screens the link still jumps to the foot of the page.
+      ref.addEventListener('click', function (e) {
+        if (!document.body.classList.contains('has-sidenotes')) return;
+        e.preventDefault();
+        on();
+        setTimeout(off, 1500);
+      });
+    });
+  }
+  function positionSidenotes() {
+    if (!container || !pairs.length) return;
+    if (window.innerWidth < WIDE) {
+      document.body.classList.remove('has-sidenotes');
+      container.classList.remove('ready');
+      return;
+    }
+    document.body.classList.add('has-sidenotes');
+    var base = container.getBoundingClientRect().top + window.scrollY;
+    var lastBottom = 0;
+    pairs.forEach(function (p) {
+      var y = p.ref.getBoundingClientRect().top + window.scrollY - base;
+      if (y < 0) y = 0;                 // never above the container (under the contents box)
+      if (y < lastBottom) y = lastBottom; // never over the previous note
+      p.note.style.top = y + 'px';
+      lastBottom = y + p.note.getBoundingClientRect().height + 8;
+    });
+    container.classList.add('ready');
+  }
+
+  /* ---- contents box: mark the section being read, fill it as progress ---- */
+  var toc = document.getElementById('TOC');
+  var tocBox = document.querySelector('.toc-box');
+  var sections = [];
+  if (toc) {
+    Array.prototype.forEach.call(toc.querySelectorAll('a[href^="#"]'), function (a) {
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      var el = document.getElementById(id);
+      if (!el) return;
+      var level = (el.getAttribute('data-number') || '1').split('.').length;
+      sections.push({ link: a, el: el, level: level });
+    });
+  }
+  function updateTOC() {
+    if (!sections.length) return;
+    var hh = topbarHeight();
+    var scrollY = window.scrollY;
+    var docHeight = root.scrollHeight;
+    var atBottom = scrollY + window.innerHeight >= docHeight - 5;
+    // The reading position: a heading counts as being read once it passes
+    // this line. At the foot of the page nothing further can scroll, so the
+    // last section is read as still in progress.
+    var pos = atBottom ? docHeight - 1 : scrollY + hh + 40;
+    function top(el) { return el.getBoundingClientRect().top + scrollY; }
+    if (tocBox) tocBox.classList.toggle('stuck', tocBox.getBoundingClientRect().top <= hh + 14);
+    sections.forEach(function (s, i) {
+      // A section runs until the next heading at the same depth or shallower,
+      // so a section stays active while its subsections scroll past.
+      var end = docHeight;
+      for (var j = i + 1; j < sections.length; j++) {
+        if (sections[j].level <= s.level) { end = top(sections[j].el); break; }
+      }
+      var start = top(s.el);
+      var progress = Math.min(Math.max((pos - start) / Math.max(end - start, 1), 0), 1);
+      var active = pos >= start && pos < end;
+      s.link.classList.toggle('passed', pos >= end);
+      s.link.classList.toggle('active', active);
+      s.link.style.setProperty('--progress', (progress * 100) + '%');
+    });
+  }
+
+  function layout() { setTopbarVar(); positionSidenotes(); updateTOC(); }
+  buildSidenotes();
+  layout();
+  window.addEventListener('scroll', updateTOC, { passive: true });
+  window.addEventListener('resize', layout);
+  window.addEventListener('load', layout);
+})();
+</script>
+</body>
+</html>
