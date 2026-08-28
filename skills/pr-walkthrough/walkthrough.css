@@ -254,6 +254,23 @@ pre.sourceCode { margin: 0; }
 /* BEFORE / AFTER pairs read as one exhibit */
 div.sourceCode + div.sourceCode { margin-top: -0.5rem; }
 
+/* diff fences: pandoc tags removed lines .st, added lines .va, hunk headers .dt.
+   The line span is inline-block in pandoc's own CSS; stretching it to the full
+   width lets the tint read as a whole line. */
+pre.sourceCode.diff code span.st { color: #b42318; }
+pre.sourceCode.diff code span.va { color: #067647; }
+pre.sourceCode.diff code span.dt { color: var(--muted); font-style: italic; }
+pre.sourceCode.diff > code > span:has(> .st),
+pre.sourceCode.diff > code > span:has(> .va) { min-width: 100%; box-sizing: border-box; border-radius: 2px; }
+pre.sourceCode.diff > code > span:has(> .st) { background: #fdecec; }
+pre.sourceCode.diff > code > span:has(> .va) { background: #e6f6ec; }
+@media (prefers-color-scheme: dark) {
+  pre.sourceCode.diff code span.st { color: #ffa198; }
+  pre.sourceCode.diff code span.va { color: #7ee787; }
+  pre.sourceCode.diff > code > span:has(> .st) { background: #3a1d1d; }
+  pre.sourceCode.diff > code > span:has(> .va) { background: #12301f; }
+}
+
 /* pandoc's pygments palette is for light ground; re-ink it for dark */
 @media (prefers-color-scheme: dark) {
   code span.kw, code span.cf, code span.pp, code span.im { color: #ff7b72; font-weight: normal; }

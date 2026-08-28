@@ -53,7 +53,9 @@ echo "ok 5 - footnotes"
 grep -q 'type="checkbox"' "$OUT" || fail "task list not rendered"
 grep -q '<table>' "$OUT" || fail "table not rendered"
 grep -q 'class="sourceCode julia"' "$OUT" || fail "julia code not highlighted"
-echo "ok 6 - task list, table, highlighting"
+grep -q 'class="sourceCode diff"' "$OUT" || fail "diff fence not highlighted"
+grep -q '<span class="va">+length(row)' "$OUT" || fail "added diff line not tagged"
+echo "ok 6 - task list, table, diff + code highlighting"
 
 # --- 7. a doc without an H1 still renders (title falls back to filename) -----
 printf '## Only a section\n\nbody\n' > "$TMP/noh1.md"

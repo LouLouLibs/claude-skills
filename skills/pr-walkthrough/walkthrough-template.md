@@ -31,14 +31,11 @@
 
 ### <what is decided here, ≤ 8 words>
 
-```julia
-# BEFORE
-<real hunk from `git diff main...<branch>`>
+```diff
+<real hunk from `git diff main...<branch> -- <file>`, trimmed; keep the @@ header>
 ```
-```julia
-# AFTER
-<real hunk>
-```
+
+<Or, when the rewrite is semantic and a line diff would be noise, two fences in the language, `# BEFORE` and `# AFTER`.>
 
 **What to confirm:** <state plainly what the reviewer should sanity-check or push back on, and why the choice was made this way.>[^why-not]
 

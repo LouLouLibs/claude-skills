@@ -11,6 +11,8 @@ Produce a **reviewer-facing** HTML walkthrough that tells the story behind a dif
 
 **Core principle:** Separate *what is already proven safe* (so they don't re-verify it) from *what needs their judgment* (so they spend attention there). End with a checklist of the actual judgment calls.
 
+**Two habits that keep it readable:** put the **key diffs** on the page — real hunks, so the reviewer sees the important code without opening the PR — and move **extraneous** material (provenance, verification output, history, rejected alternatives) into **footnotes**, which render as margin sidenotes and leave the body's flow undisturbed.
+
 ## The Iron Rule: author Markdown, render with the bundled script
 
 **ALWAYS write the walkthrough as Markdown, then render it with the renderer bundled next to this file:**
@@ -32,13 +34,14 @@ The page layout is driven by the Markdown's structure (full skeleton in `walkthr
 1. **Line 1 — exactly one `#` heading:** `# PR #<M> — <short title>`. It becomes the page title and the sticky top bar; any later `#` heading is demoted to plain text.
 2. **Line 3 — the meta line:** `**Issue:** [#N](…) · **PR:** [#M](…) · **Branch:** \`…\` · **Date:** YYYY-MM-DD`. The first paragraph renders as the meta strip.
 3. **Sections `##`, subsections `###`** — both feed the contents box (`####` does not). Headings are the reviewer's navigation: ≤ 8 words naming what is decided there ("Quoted commas are now honoured", not "Changes to ingest.jl"). Don't number them — the renderer does.
-4. **Footnotes `[^slug]`** carry the evidence trail (next section).
-5. **At most one blockquote per section** — the "why this matters for your review" note, rendered as the green-barred callout.
-6. **Task list** (`- [ ]`) for the approval checklist.
+4. **Footnotes `[^slug]`** for anything extraneous to the decision — they keep the body's flow (next section).
+5. **Key diffs as real hunks** — a ```` ```diff ```` fence or BEFORE/AFTER fences for every judgment call (section after next).
+6. **At most one blockquote per section** — the "why this matters for your review" note, rendered as the green-barred callout.
+7. **Task list** (`- [ ]`) for the approval checklist.
 
 ## Footnotes: the margin is for evidence, the body is for decisions
 
-At desktop width a footnote sits in the margin beside the sentence that cites it; on narrow screens and in print it is a numbered note at the foot. They keep the body a decision guide without losing anything the reviewer might want to check. Footnote:
+It is a good idea to use some footnotes: anything that would interrupt the flow of the argument goes there, so the reviewer reads the body straight through and glances at the margin only when they want to check something. At desktop width a footnote sits beside the sentence that cites it; on narrow screens and in print it is a numbered note at the foot. Footnote:
 
 - **Provenance** — commit SHA, `git blame` result, the issue comment where a choice was agreed, the codebook/doc page that justifies a rule.
 - **How a claim was verified** — the exact command and output (`rg -c '…' file → 3`) when the body only needs the conclusion.
@@ -49,6 +52,20 @@ At desktop width a footnote sits in the margin beside the sentence that cites it
 Keep in the body everything the reviewer must read to decide: the 🔍 judgment calls, *what to confirm*, the safety guarantee, the size. A footnote is read out of line, so it must stand alone: one to three sentences, no "see above".
 
 Syntax: `…the codebook says yes.[^codebook]` in the text; `[^codebook]: CoG 2022 Technical Documentation §4.2, p. 31.` as its own paragraph right after the paragraph that cites it. Slugs are words; the renderer assigns numbers. Two to six footnotes is typical — none means evidence is cluttering the body, a dozen means decisions have leaked into the margin.
+
+## Present the key diffs
+
+The reviewer should see the important code on the page, not reconstruct it from prose. For every 🔍 judgment call and every substantive theme, quote the real hunk:
+
+```diff
+@@ -12,4 +12,4 @@ function ingest(path)
+-fields = split(line, ',')
++rows = CSV.File(path; quotechar='"', escapechar='"')
+```
+
+- Take hunks from `git diff main...<branch> -- <file>` and trim to the lines that matter — keep the `@@` header so the reviewer can find the spot, ≤ ~25 lines per hunk. Never retype or paraphrase code.
+- A ```` ```diff ```` fence when the change is a local edit (removed/added lines render red/green); two BEFORE/AFTER fences in the language when the rewrite is semantic and a line diff would be noise.
+- One hunk per point. The full diff is the PR; the walkthrough shows the parts the decision turns on.
 
 ## Output location & naming
 
@@ -68,7 +85,7 @@ Timestamp = generation date and time in **local time**. Get it by actually runni
    ```
 2. **Find the human-judgment spots.** Scan for: intentional behavior choices, anything that trades correctness for compatibility, deletions that *look* load-bearing, downgraded checks (`@assert`→`@warn`), discoveries surfaced but not fixed. For data/quant changes also scan for the silent landmines tests rarely catch: **lookahead / data leakage** (information from the test or future period leaking into training/in-sample, scalers or stats fit on the full sample), a changed **metric, threshold, or acceptance bar**, **hardcoded paths or magic parameters**, **dependency / environment pin** changes that move results, and silent **missing-value / outlier / schema** handling. These become the 🔍 section.
 3. **Identify what's already proven** — tests passing, byte-identity checks, CI — so the reviewer can skip re-deriving it.
-4. **Write the Markdown** in the shape above; quote real code hunks; move evidence into footnotes.
+4. **Write the Markdown** in the shape above: key diffs as real hunks, extraneous detail in footnotes.
 5. **Render** with the bundled script and confirm the page is self-contained:
    ```bash
    rg -q '<script>' <name>.html && ! rg -q '<link' <name>.html && echo self-contained
@@ -82,7 +99,7 @@ Adapt headings to the change, but keep this spine:
 - **Title + meta line** — as above.
 - **TL;DR — what to know before approving** — 4–6 bullets: size, the safety guarantee, the one discovery, where to look. State the size honestly: if the diff is large or spans more than one logical change, say so and point to the riskiest slice — oversized PRs get superficial review.
 - **The safety contract / verification** — what was checked and how (tests, byte-identity, CI), so the reviewer doesn't re-verify. State plainly: *you don't need to re-derive X*. For data/quant changes, fold in the **reproducibility** facts the reviewer would otherwise have to chase: results reproduce (bit-for-bit or within stated tolerance), environment/dependencies pinned, and the data version/source recorded.
-- **The nuance(s) to scrutinize 🔍** — the heart of the doc. For each judgment call: quote the before/after hunk, explain the choice, and say explicitly what the reviewer should confirm or push back on.
+- **The nuance(s) to scrutinize 🔍** — the heart of the doc. For each judgment call: present the key diff (a ```` ```diff ```` hunk or BEFORE/AFTER), explain the choice, and say explicitly what the reviewer should confirm or push back on.
 - **Discoveries** — anything surfaced (e.g. a pre-existing bug) that the PR does *not* fix, with a table/example and why it's out of scope.
 - **The rest, by theme** — lower-risk changes grouped by intent (not file-by-file), one tight code snippet each.
 - **Suggested approval checklist** — `- [ ]` items, each a real judgment call from the 🔍 section, not "code compiles."

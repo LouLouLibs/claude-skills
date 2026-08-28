@@ -48,14 +48,11 @@ rows = CSV.File(path; quotechar='"', escapechar='"')
 
 ### `@assert` downgraded to `@warn` on column count
 
-```julia
-# BEFORE
-@assert length(fields) == 26
-```
-
-```julia
-# AFTER
-length(row) == 26 || @warn "unexpected column count" file=path n=length(row)
+```diff
+@@ -41,3 +41,3 @@ function ingest(path)
+-@assert length(fields) == 26
++length(row) == 26 || @warn "unexpected column count" file=path n=length(row)
+ push!(out, row)
 ```
 
 **What to confirm:** that a warning is acceptable here, since the pipeline now fails later (at the schema check) instead of at parse time.
