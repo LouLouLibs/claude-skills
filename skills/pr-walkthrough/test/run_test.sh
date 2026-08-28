@@ -61,4 +61,10 @@ printf '## Only a section\n\nbody\n' > "$TMP/noh1.md"
 grep -q '<title>noh1</title>' "$TMP/noh1.html" || fail "no-H1 doc lost its <title>"
 echo "ok 7 - no-H1 fallback"
 
+# --- 8. a "# comment" inside a code fence is not a heading ------------------
+printf '## Section\n\n```bash\n# BEFORE\necho hi\n```\n' > "$TMP/fence.md"
+"$SKILL/render-walkthrough.sh" "$TMP/fence.md" >/dev/null
+grep -q '<title>fence</title>' "$TMP/fence.html" || fail "fenced # comment was taken for a heading"
+echo "ok 8 - fenced comment is not a heading"
+
 echo "all ok"

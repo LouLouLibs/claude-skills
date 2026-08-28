@@ -38,9 +38,11 @@ else
 fi
 
 # A doc without a leading H1 has no title; fall back to the filename so
-# pandoc doesn't warn and the browser tab isn't blank.
+# pandoc doesn't warn and the browser tab isn't blank. A "# comment" inside a
+# code fence is not a heading, so fenced blocks are skipped.
 meta=()
-grep -qE '^# ' "$src" || meta=(--metadata "pagetitle=$(basename "$src" .md)")
+awk '/^```/ { fence = !fence; next }  !fence && /^# / { found = 1 }  END { exit !found }' "$src" \
+  || meta=(--metadata "pagetitle=$(basename "$src" .md)")
 
 pandoc \
   --from gfm \
