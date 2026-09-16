@@ -14,6 +14,19 @@
 #   gfm (+footnotes)             [^n] footnotes are lifted into margin sidenotes
 set -euo pipefail
 
+# Dollar signs vs math: see render-doc.sh in rendering-spec-docs — same rule.
+# Default keeps `$` literal (walkthroughs quote dollar amounts); --math turns
+# the gfm math extension back on and emits self-contained MathML.
+math=0
+args=()
+for a in "$@"; do
+  case "$a" in
+    --math) math=1 ;;
+    *) args+=("$a") ;;
+  esac
+done
+set -- ${args[@]+"${args[@]}"}
+
 [[ $# -ge 1 ]] || { echo "usage: $0 <markdown-file>" >&2; exit 1; }
 src="$1"
 [[ -f "$src" ]] || { echo "not found: $src" >&2; exit 1; }
@@ -44,8 +57,16 @@ meta=()
 awk '/^```/ { fence = !fence; next }  !fence && /^# / { found = 1 }  END { exit !found }' "$src" \
   || meta=(--metadata "pagetitle=$(basename "$src" .md)")
 
+from="gfm-tex_math_dollars"
+mathflags=()
+if [[ $math -eq 1 ]]; then
+  from="gfm"
+  mathflags=(--mathml)
+fi
+
 pandoc \
-  --from gfm \
+  --from "$from" \
+  ${mathflags[@]+"${mathflags[@]}"} \
   --to html5 \
   --standalone \
   --embed-resources \
