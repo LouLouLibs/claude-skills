@@ -207,21 +207,6 @@ $endif$
     if (article.contains(e.target)) e.preventDefault();
   }, true);
 
-  /* Chatter guard: a primary-button mousedown arriving while the button is
-     already down is impossible from a healthy device — worn microswitches
-     emit them, and each one resets the browser's selection anchor, killing
-     drag-selection. Swallow them. */
-  var primaryDown = false;
-  document.addEventListener('mousedown', function (e) {
-    if (e.button !== 0) return;
-    if (primaryDown) { e.preventDefault(); e.stopPropagation(); return; }
-    primaryDown = true;
-  }, true);
-  document.addEventListener('mouseup', function (e) {
-    if (e.button === 0) primaryDown = false;
-  }, true);
-  window.addEventListener('blur', function () { primaryDown = false; });
-
   /* ---- anchor search over the article's text nodes ---- */
   function textNodes() {
     var w = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, null), n, out = [];
@@ -321,7 +306,6 @@ $endif$
   function onSel() {
     if (selTimer) clearTimeout(selTimer);
     selTimer = setTimeout(function () {
-      if (primaryDown) return;               /* never mutate UI mid-drag */
       if (!form.hidden) {
         if (document.activeElement === ta) return;
         var s2 = window.getSelection();
