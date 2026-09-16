@@ -533,3 +533,11 @@ mark.mc-hl { background: color-mix(in srgb, var(--accent) 18%, transparent); col
   box-sizing: border-box; margin-bottom: 0.3rem; }
 #mc-form button { font-size: 0.72rem; padding: 0.15rem 0.6rem; cursor: pointer; }
 .mc-status { font-size: 0.7rem; margin-left: 0.5rem; color: var(--muted, #888); }
+
+.mc-close { float: right; border: none; background: none; color: var(--muted, #888);
+  font-size: 0.9rem; cursor: pointer; padding: 0 0.2rem; }
+
+mark.mc-hl { cursor: pointer; }
+mark.mc-hl.mc-flash { background: color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: background 0.3s; }
+.sidenote.margin-comment { cursor: pointer; }

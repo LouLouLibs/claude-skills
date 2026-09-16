@@ -254,21 +254,45 @@ $endif$
     var placed = [];
     lines.forEach(function (c) {
       if (c.retract || retracted[c.id]) return;
-      var y = 0, r = c.anchor && findQuote(c.anchor.quote);
+      var y = 0, mk = null, r = c.anchor && findQuote(c.anchor.quote);
       if (r) {
-        var mk = document.createElement('mark');
+        mk = document.createElement('mark');
         mk.className = 'mc-hl';
         try { r.surroundContents(mk); } catch (e) { mk = null; }
         if (mk) y = mk.getBoundingClientRect().top + window.scrollY - base;
       }
-      placed.push({ y: y, c: c });
+      placed.push({ y: y, c: c, mk: mk });
     });
     placed.sort(function (a, b) { return a.y - b.y; });
     var lastBottom = 0;
+    var allCards = [];
     placed.forEach(function (p) {
       var y = Math.max(p.y, lastBottom);
       var el = card(p.c, y);
       lastBottom = y + el.getBoundingClientRect().height + 8;
+      allCards.push(el);
+      if (!p.mk) return;
+      /* two-way navigation: card <-> highlighted region */
+      p.mk.title = (p.c.name || p.c.user || '') + ': ' + (p.c.text || '').slice(0, 120);
+      el.addEventListener('click', function () {
+        allCards.forEach(function (c2) { c2.classList.remove('active'); });
+        el.classList.add('active');
+        p.mk.classList.add('mc-flash');
+        var r = p.mk.getBoundingClientRect();
+        if (r.top < 80 || r.bottom > window.innerHeight) {
+          p.mk.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+        setTimeout(function () { p.mk.classList.remove('mc-flash'); }, 1600);
+      });
+      p.mk.addEventListener('click', function () {
+        allCards.forEach(function (c2) { c2.classList.remove('active'); });
+        el.classList.add('active');
+        var r = el.getBoundingClientRect();
+        if (r.top < 80 || r.bottom > window.innerHeight) {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+        setTimeout(function () { el.classList.remove('active'); }, 2500);
+      });
     });
     if (placed.length) document.body.classList.add('has-sidenotes');
     container.classList.add('ready');
@@ -302,15 +326,9 @@ $endif$
   document.body.appendChild(form);
   var pending = null;
 
-  /* Sticky last-selection: flaky input (e.g. a chattering mouse button) can
-     collapse a selection moments after it existed. Rather than intercepting
-     events (a guard that can misfire is worse than the disease — see git
-     history), remember the last good selection briefly: if the live one
-     vanishes, the button stays armed with the remembered quote for a grace
-     period, and opening the form re-highlights it. Purely additive; nothing
-     is prevented or swallowed, so nothing can wedge the page. */
-  var lastGood = null;          // { quote, left, top, ts }
-  var GRACE = 2500;             // ms
+  /* Strict live-selection: the button reflects the selection that exists
+     right now — nothing remembered, nothing guessed. Double-click (and
+     double-click-drag) is the first-class gesture. */
   var selTimer = null;
   function onSel() {
     if (selTimer) clearTimeout(selTimer);
@@ -323,22 +341,15 @@ $endif$
       }
       var sel = window.getSelection();
       var txt = sel && sel.rangeCount ? sel.toString().trim() : '';
-      if (txt && txt.length >= 3 && txt.length <= 512 && article.contains(sel.anchorNode)) {
-        var rect = sel.getRangeAt(0).getBoundingClientRect();
-        if (rect && (rect.width || rect.height)) {
-          lastGood = { quote: txt, left: rect.right + window.scrollX + 6,
-                       top: rect.top + window.scrollY - 4, ts: Date.now() };
-        }
+      if (!txt || txt.length < 3 || txt.length > 512 || !article.contains(sel.anchorNode)) {
+        btn.hidden = true; return;
       }
-      if (lastGood && Date.now() - lastGood.ts < GRACE) {
-        pending = { quote: lastGood.quote };
-        btn.style.left = lastGood.left + 'px';
-        btn.style.top = lastGood.top + 'px';
-        btn.hidden = false;
-      } else {
-        btn.hidden = true;
-        lastGood = null;
-      }
+      var rect = sel.getRangeAt(0).getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) { btn.hidden = true; return; }
+      pending = { quote: txt };
+      btn.style.left = (rect.right + window.scrollX + 6) + 'px';
+      btn.style.top = (rect.top + window.scrollY - 4) + 'px';
+      btn.hidden = false;
     }, 150);
   }
   ['selectionchange', 'mouseup', 'pointerup', 'touchend', 'keyup'].forEach(function (evt) {
@@ -348,18 +359,10 @@ $endif$
   btn.addEventListener('click', function () {
     form.style.left = btn.style.left; form.style.top = btn.style.top;
     btn.hidden = true; form.hidden = false; status.textContent = ''; ta.value = '';
-    if (pending && pending.quote) {
-      var r = findQuote(pending.quote);
-      if (r) {
-        var sel = window.getSelection();
-        sel.removeAllRanges(); sel.addRange(r);
-      }
-    }
-    lastGood = null;            /* consumed; the grace window ends here */
     ta.focus();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { form.hidden = true; btn.hidden = true; lastGood = null; }
+    if (e.key === 'Escape') { form.hidden = true; btn.hidden = true; }
   });
   send.addEventListener('click', function () {
     var text = ta.value.trim();
