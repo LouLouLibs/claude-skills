@@ -183,5 +183,154 @@ $endif$
   window.addEventListener('load', layout);
 })();
 </script>
+<script>
+/* ---- margin comments (LouLouLibs/margin) ----------------------------------
+   Active ONLY on the tailnet doc sites: hostname *.ts.net with the site name
+   as the first path segment (static mount + /<site>/api proxy share the
+   origin). Everywhere else — file://, the claude.ai artifact copy — this
+   whole block is a silent no-op. Comments are reader data: rendered as text
+   (textContent, never innerHTML). */
+(function () {
+  'use strict';
+  if (!/\.ts\.net$$/.test(location.hostname)) return;
+  var m = location.pathname.match(/^\/([^/]+)\/(.+)\.html$$/);
+  if (!m) return;
+  var site = m[1], doc = m[2];
+  if (doc.indexOf('comments/') === 0) return;
+  var article = document.querySelector('main.article');
+  var container = document.getElementById('sidenotes');
+  if (!article || !container) return;
+
+  /* ---- anchor search over the article's text nodes ---- */
+  function textNodes() {
+    var w = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, null), n, out = [];
+    while ((n = w.nextNode())) out.push(n);
+    return out;
+  }
+  function findQuote(quote) {
+    if (!quote) return null;
+    var nodes = textNodes(), all = '', starts = [];
+    nodes.forEach(function (n) { starts.push(all.length); all += n.nodeValue; });
+    var i = all.indexOf(quote);
+    if (i < 0) return null;
+    for (var k = nodes.length - 1; k >= 0; k--) {
+      if (starts[k] <= i) {
+        var off = i - starts[k];
+        if (off + quote.length <= nodes[k].nodeValue.length) {
+          var r = document.createRange();
+          r.setStart(nodes[k], off); r.setEnd(nodes[k], off + quote.length);
+          return r;
+        }
+        return null; // quote spans nodes; anchor to the first
+      }
+    }
+    return null;
+  }
+
+  /* ---- render existing comments as margin cards ---- */
+  function card(c, y) {
+    var d = document.createElement('div');
+    d.className = 'sidenote margin-comment' + (c.reply_to ? ' mc-reply' : '');
+    var who = document.createElement('div');
+    who.className = 'mc-who';
+    who.textContent = (c.name || c.user || '?') + ' · ' + (c.ts || '').slice(0, 10);
+    var body = document.createElement('div');
+    body.textContent = c.text || '';
+    d.appendChild(who); d.appendChild(body);
+    d.style.top = Math.max(0, y) + 'px';
+    container.appendChild(d);
+    return d;
+  }
+  function renderAll(lines) {
+    var retracted = {};
+    lines.forEach(function (c) { if (c.retract) retracted[c.retract] = true; });
+    var base = container.getBoundingClientRect().top + window.scrollY;
+    var placed = [];
+    lines.forEach(function (c) {
+      if (c.retract || retracted[c.id]) return;
+      var y = 0, r = c.anchor && findQuote(c.anchor.quote);
+      if (r) {
+        var mk = document.createElement('mark');
+        mk.className = 'mc-hl';
+        try { r.surroundContents(mk); } catch (e) { mk = null; }
+        if (mk) y = mk.getBoundingClientRect().top + window.scrollY - base;
+      }
+      placed.push({ y: y, c: c });
+    });
+    placed.sort(function (a, b) { return a.y - b.y; });
+    var lastBottom = 0;
+    placed.forEach(function (p) {
+      var y = Math.max(p.y, lastBottom);
+      var el = card(p.c, y);
+      lastBottom = y + el.getBoundingClientRect().height + 8;
+    });
+    if (placed.length) document.body.classList.add('has-sidenotes');
+    container.classList.add('ready');
+  }
+  fetch('/' + site + '/comments/' + doc + '.jsonl', { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.text() : ''; })
+    .then(function (t) {
+      var lines = [];
+      t.split('\n').forEach(function (l) {
+        l = l.trim(); if (!l) return;
+        try { lines.push(JSON.parse(l)); } catch (e) {}
+      });
+      if (lines.length) renderAll(lines);
+    })
+    .catch(function () {});
+
+  /* ---- selection -> popover -> POST ---- */
+  var btn = document.createElement('button');
+  btn.id = 'mc-btn'; btn.type = 'button'; btn.textContent = '\u270e comment';
+  btn.hidden = true; document.body.appendChild(btn);
+  var form = document.createElement('div');
+  form.id = 'mc-form'; form.hidden = true;
+  var ta = document.createElement('textarea');
+  ta.maxLength = 4096; ta.placeholder = 'comment\u2026 (posts with your tailnet identity)';
+  var send = document.createElement('button'); send.type = 'button'; send.textContent = 'post';
+  var status = document.createElement('span'); status.className = 'mc-status';
+  form.appendChild(ta); form.appendChild(send); form.appendChild(status);
+  document.body.appendChild(form);
+  var pending = null;
+
+  document.addEventListener('mouseup', function () {
+    setTimeout(function () {
+      if (!form.hidden) return;
+      var sel = window.getSelection();
+      var txt = sel && sel.toString().trim();
+      if (!txt || txt.length < 3 || txt.length > 512 || !article.contains(sel.anchorNode)) {
+        btn.hidden = true; return;
+      }
+      var rect = sel.getRangeAt(0).getBoundingClientRect();
+      pending = { quote: txt };
+      btn.style.left = (rect.right + window.scrollX + 6) + 'px';
+      btn.style.top = (rect.top + window.scrollY - 4) + 'px';
+      btn.hidden = false;
+    }, 0);
+  });
+  btn.addEventListener('click', function () {
+    form.style.left = btn.style.left; form.style.top = btn.style.top;
+    btn.hidden = true; form.hidden = false; status.textContent = ''; ta.value = '';
+    ta.focus();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { form.hidden = true; btn.hidden = true; }
+  });
+  send.addEventListener('click', function () {
+    var text = ta.value.trim();
+    if (!text || !pending) return;
+    status.textContent = '\u2026';
+    fetch('/' + site + '/api/comment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: site, doc: doc, text: text, anchor: { quote: pending.quote } })
+    }).then(function (r) {
+      if (r.status === 201) { status.textContent = 'posted \u2713'; setTimeout(function () { location.reload(); }, 600); }
+      else r.json().then(function (j) { status.textContent = (j && j.error) || ('error ' + r.status); })
+             .catch(function () { status.textContent = 'error ' + r.status; });
+    }).catch(function () { status.textContent = 'unreachable'; });
+  });
+})();
+</script>
 </body>
 </html>

@@ -515,3 +515,21 @@ body.has-sidenotes #footnotes { display: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+
+/* ---------- margin comments (LouLouLibs/margin; tailnet only) ---------- */
+mark.mc-hl { background: color-mix(in srgb, var(--accent) 18%, transparent); color: inherit;
+  border-bottom: 1px dotted var(--accent); }
+.sidenote.margin-comment { border-left: 2px solid var(--accent); opacity: 1; }
+.sidenote.mc-reply { margin-left: 1rem; }
+.mc-who { font-family: var(--mono, monospace); font-size: 0.62rem; color: var(--muted, #888);
+  margin-bottom: 0.25rem; }
+#mc-btn { position: absolute; z-index: 40; font-size: 0.7rem; padding: 0.15rem 0.45rem;
+  border: 1px solid var(--accent); background: var(--surface, #fff); color: var(--accent);
+  border-radius: 3px; cursor: pointer; }
+#mc-form { position: absolute; z-index: 41; background: var(--surface, #fff);
+  border: 1px solid var(--accent); border-radius: 4px; padding: 0.4rem; width: 16rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+#mc-form textarea { width: 100%; min-height: 4rem; font: inherit; font-size: 0.8rem;
+  box-sizing: border-box; margin-bottom: 0.3rem; }
+#mc-form button { font-size: 0.72rem; padding: 0.15rem 0.6rem; cursor: pointer; }
+.mc-status { font-size: 0.7rem; margin-left: 0.5rem; color: var(--muted, #888); }
