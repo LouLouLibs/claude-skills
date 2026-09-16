@@ -55,8 +55,9 @@ type request struct {
 	Site    string  `json:"site"`
 	Doc     string  `json:"doc"`
 	Anchor  *anchor `json:"anchor,omitempty"`
-	Text    string  `json:"text"`
+	Text    string  `json:"text,omitempty"`
 	ReplyTo string  `json:"reply_to,omitempty"`
+	Retract string  `json:"retract,omitempty"`
 }
 
 type record struct {
@@ -66,8 +67,9 @@ type record struct {
 	Name    string  `json:"name,omitempty"`
 	Doc     string  `json:"doc"`
 	Anchor  *anchor `json:"anchor,omitempty"`
-	Text    string  `json:"text"`
+	Text    string  `json:"text,omitempty"`
 	ReplyTo string  `json:"reply_to,omitempty"`
+	Retract string  `json:"retract,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -130,6 +132,17 @@ func (s *server) validate(req *request) (string, error) {
 		strings.Contains(req.Doc, "..") || strings.HasPrefix(req.Doc, "/") {
 		return "", errors.New("bad doc id")
 	}
+	if req.Retract != "" {
+		// A retraction is its own line and takes no other payload. Append-only
+		// stays append-only: the original line remains; readers hide both.
+		if !idRe.MatchString(req.Retract) {
+			return "", errors.New("bad retract id")
+		}
+		if req.Text != "" || req.Anchor != nil || req.ReplyTo != "" {
+			return "", errors.New("retraction takes no other fields")
+		}
+		return retractPath(root, req)
+	}
 	if req.Text == "" || len(req.Text) > maxText {
 		return "", errors.New("text empty or too long")
 	}
@@ -141,13 +154,21 @@ func (s *server) validate(req *request) (string, error) {
 	if req.ReplyTo != "" && !idRe.MatchString(req.ReplyTo) {
 		return "", errors.New("bad reply_to id")
 	}
-	// Containment: the cleaned path must stay under the site root.
-	path := filepath.Join(root, filepath.FromSlash(req.Doc)+".jsonl")
+	return containedPath(root, req.Doc)
+}
+
+// containedPath: the cleaned path must stay under the site root.
+func containedPath(root, doc string) (string, error) {
+	path := filepath.Join(root, filepath.FromSlash(doc)+".jsonl")
 	clean := filepath.Clean(path)
 	if clean != path || !strings.HasPrefix(clean, root+string(filepath.Separator)) {
 		return "", errors.New("doc id escapes root")
 	}
 	return clean, nil
+}
+
+func retractPath(root string, req *request) (string, error) {
+	return containedPath(root, req.Doc)
 }
 
 func (s *server) handleComment(w http.ResponseWriter, r *http.Request) {
@@ -206,6 +227,7 @@ func (s *server) handleComment(w http.ResponseWriter, r *http.Request) {
 		Anchor:  req.Anchor,
 		Text:    req.Text,
 		ReplyTo: req.ReplyTo,
+		Retract: req.Retract,
 	}
 	line, err := json.Marshal(rec)
 	if err != nil {

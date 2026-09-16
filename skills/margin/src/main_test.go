@@ -147,3 +147,22 @@ func TestReplyToValidation(t *testing.T) {
 		t.Fatalf("good reply_to rejected: %d %s", w.Code, w.Body)
 	}
 }
+
+func TestRetract(t *testing.T) {
+	s, root := testServer(t)
+	if w := post(t, s, `{"site":"S","doc":"x","retract":"0123456789abcdef"}`, nil); w.Code != http.StatusCreated {
+		t.Fatalf("retract rejected: %d %s", w.Code, w.Body)
+	}
+	b, _ := os.ReadFile(filepath.Join(root, "x.jsonl"))
+	var rec record
+	json.Unmarshal(bytes.TrimSpace(b), &rec)
+	if rec.Retract != "0123456789abcdef" || rec.Text != "" || rec.User != "erik@example.com" {
+		t.Fatalf("bad retraction record: %+v", rec)
+	}
+	if w := post(t, s, `{"site":"S","doc":"x","retract":"0123456789abcdef","text":"sneaky"}`, nil); w.Code != http.StatusBadRequest {
+		t.Fatalf("retract+text accepted: %d", w.Code)
+	}
+	if w := post(t, s, `{"site":"S","doc":"x","retract":"zz"}`, nil); w.Code != http.StatusBadRequest {
+		t.Fatalf("bad retract id accepted: %d", w.Code)
+	}
+}
