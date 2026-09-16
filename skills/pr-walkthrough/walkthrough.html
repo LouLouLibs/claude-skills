@@ -302,6 +302,15 @@ $endif$
   document.body.appendChild(form);
   var pending = null;
 
+  /* Sticky last-selection: flaky input (e.g. a chattering mouse button) can
+     collapse a selection moments after it existed. Rather than intercepting
+     events (a guard that can misfire is worse than the disease — see git
+     history), remember the last good selection briefly: if the live one
+     vanishes, the button stays armed with the remembered quote for a grace
+     period, and opening the form re-highlights it. Purely additive; nothing
+     is prevented or swallowed, so nothing can wedge the page. */
+  var lastGood = null;          // { quote, left, top, ts }
+  var GRACE = 2500;             // ms
   var selTimer = null;
   function onSel() {
     if (selTimer) clearTimeout(selTimer);
@@ -314,16 +323,23 @@ $endif$
       }
       var sel = window.getSelection();
       var txt = sel && sel.rangeCount ? sel.toString().trim() : '';
-      if (!txt || txt.length < 3 || txt.length > 512 || !article.contains(sel.anchorNode)) {
-        btn.hidden = true; return;
+      if (txt && txt.length >= 3 && txt.length <= 512 && article.contains(sel.anchorNode)) {
+        var rect = sel.getRangeAt(0).getBoundingClientRect();
+        if (rect && (rect.width || rect.height)) {
+          lastGood = { quote: txt, left: rect.right + window.scrollX + 6,
+                       top: rect.top + window.scrollY - 4, ts: Date.now() };
+        }
       }
-      var rect = sel.getRangeAt(0).getBoundingClientRect();
-      if (!rect || (rect.width === 0 && rect.height === 0)) { btn.hidden = true; return; }
-      pending = { quote: txt };
-      btn.style.left = (rect.right + window.scrollX + 6) + 'px';
-      btn.style.top = (rect.top + window.scrollY - 4) + 'px';
-      btn.hidden = false;
-    }, 200);
+      if (lastGood && Date.now() - lastGood.ts < GRACE) {
+        pending = { quote: lastGood.quote };
+        btn.style.left = lastGood.left + 'px';
+        btn.style.top = lastGood.top + 'px';
+        btn.hidden = false;
+      } else {
+        btn.hidden = true;
+        lastGood = null;
+      }
+    }, 150);
   }
   ['selectionchange', 'mouseup', 'pointerup', 'touchend', 'keyup'].forEach(function (evt) {
     document.addEventListener(evt, onSel, true);
@@ -332,10 +348,18 @@ $endif$
   btn.addEventListener('click', function () {
     form.style.left = btn.style.left; form.style.top = btn.style.top;
     btn.hidden = true; form.hidden = false; status.textContent = ''; ta.value = '';
+    if (pending && pending.quote) {
+      var r = findQuote(pending.quote);
+      if (r) {
+        var sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(r);
+      }
+    }
+    lastGood = null;            /* consumed; the grace window ends here */
     ta.focus();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { form.hidden = true; btn.hidden = true; }
+    if (e.key === 'Escape') { form.hidden = true; btn.hidden = true; lastGood = null; }
   });
   send.addEventListener('click', function () {
     var text = ta.value.trim();
