@@ -186,10 +186,9 @@ $endif$
 <script>
 /* ---- margin comments (LouLouLibs/margin) ----------------------------------
    Active ONLY on the tailnet doc sites: hostname *.ts.net with the site name
-   as the first path segment (static mount + /<site>/api proxy share the
-   origin). Everywhere else — file://, the claude.ai artifact copy — this
-   whole block is a silent no-op. Comments are reader data: rendered as text
-   (textContent, never innerHTML). */
+   as the first path segment. Everywhere else — file://, artifact copies —
+   this block is a silent no-op. Comments are reader data: rendered with
+   textContent, never innerHTML. */
 (function () {
   'use strict';
   if (!/\.ts\.net$$/.test(location.hostname)) return;
@@ -200,6 +199,28 @@ $endif$
   var article = document.querySelector('main.article');
   var container = document.getElementById('sidenotes');
   if (!article || !container) return;
+
+  /* Native drag-and-drop steals drag-selection (dragging from a link or an
+     existing selection starts DnD instead). Nothing in a static doc needs
+     dragging, so suppress it inside the article. */
+  document.addEventListener('dragstart', function (e) {
+    if (article.contains(e.target)) e.preventDefault();
+  }, true);
+
+  /* Chatter guard: a primary-button mousedown arriving while the button is
+     already down is impossible from a healthy device — worn microswitches
+     emit them, and each one resets the browser's selection anchor, killing
+     drag-selection. Swallow them. */
+  var primaryDown = false;
+  document.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    if (primaryDown) { e.preventDefault(); e.stopPropagation(); return; }
+    primaryDown = true;
+  }, true);
+  document.addEventListener('mouseup', function (e) {
+    if (e.button === 0) primaryDown = false;
+  }, true);
+  window.addEventListener('blur', function () { primaryDown = false; });
 
   /* ---- anchor search over the article's text nodes ---- */
   function textNodes() {
@@ -221,7 +242,7 @@ $endif$
           r.setStart(nodes[k], off); r.setEnd(nodes[k], off + quote.length);
           return r;
         }
-        return null; // quote spans nodes; anchor to the first
+        return null;
       }
     }
     return null;
@@ -233,7 +254,7 @@ $endif$
     d.className = 'sidenote margin-comment' + (c.reply_to ? ' mc-reply' : '');
     var who = document.createElement('div');
     who.className = 'mc-who';
-    who.textContent = (c.name || c.user || '?') + ' · ' + (c.ts || '').slice(0, 10);
+    who.textContent = (c.name || c.user || '?') + ' \u00b7 ' + (c.ts || '').slice(0, 10);
     var body = document.createElement('div');
     body.textContent = c.text || '';
     d.appendChild(who); d.appendChild(body);
@@ -289,18 +310,24 @@ $endif$
   ta.maxLength = 4096; ta.placeholder = 'comment\u2026 (posts with your tailnet identity)';
   var send = document.createElement('button'); send.type = 'button'; send.textContent = 'post';
   var status = document.createElement('span'); status.className = 'mc-status';
-  form.appendChild(ta); form.appendChild(send); form.appendChild(status);
+  var closeB = document.createElement('button'); closeB.type = 'button';
+  closeB.textContent = '\u00d7'; closeB.className = 'mc-close'; closeB.title = 'close (Esc)';
+  closeB.addEventListener('click', function () { form.hidden = true; });
+  form.appendChild(closeB); form.appendChild(ta); form.appendChild(send); form.appendChild(status);
   document.body.appendChild(form);
   var pending = null;
 
-  /* selectionchange, not mouseup: fires for mouse, touch (iPad/phone), and
-     keyboard selection alike. Debounced so the button appears when the
-     selection settles rather than flickering while it grows. */
   var selTimer = null;
-  document.addEventListener('selectionchange', function () {
+  function onSel() {
     if (selTimer) clearTimeout(selTimer);
     selTimer = setTimeout(function () {
-      if (!form.hidden) return;
+      if (primaryDown) return;               /* never mutate UI mid-drag */
+      if (!form.hidden) {
+        if (document.activeElement === ta) return;
+        var s2 = window.getSelection();
+        if (s2 && s2.toString().trim().length >= 3) { form.hidden = true; }
+        else return;
+      }
       var sel = window.getSelection();
       var txt = sel && sel.rangeCount ? sel.toString().trim() : '';
       if (!txt || txt.length < 3 || txt.length > 512 || !article.contains(sel.anchorNode)) {
@@ -312,8 +339,12 @@ $endif$
       btn.style.left = (rect.right + window.scrollX + 6) + 'px';
       btn.style.top = (rect.top + window.scrollY - 4) + 'px';
       btn.hidden = false;
-    }, 350);
+    }, 200);
+  }
+  ['selectionchange', 'mouseup', 'pointerup', 'touchend', 'keyup'].forEach(function (evt) {
+    document.addEventListener(evt, onSel, true);
   });
+
   btn.addEventListener('click', function () {
     form.style.left = btn.style.left; form.style.top = btn.style.top;
     btn.hidden = true; form.hidden = false; status.textContent = ''; ta.value = '';
