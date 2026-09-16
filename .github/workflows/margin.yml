@@ -1,0 +1,30 @@
+name: margin
+
+on:
+  push:
+    tags: ["margin-v*"]
+  pull_request:
+    paths: ["skills/margin/**", ".github/workflows/margin.yml"]
+  workflow_dispatch:
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: skills/margin/src }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: stable }
+      # Zero third-party dependencies is a design invariant: the absence of
+      # go.sum IS the check.
+      - name: zero-deps invariant
+        run: test ! -f go.sum
+      - run: CGO_ENABLED=0 go vet ./...
+      - run: CGO_ENABLED=0 go test ./...
+      - name: build static binary
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o margin-linux-x86_64 .
+      - name: release
+        if: startsWith(github.ref, 'refs/tags/margin-v')
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release create "$GITHUB_REF_NAME" margin-linux-x86_64 --title "$GITHUB_REF_NAME" --notes "Static linux/x86_64 build (CGO_ENABLED=0). Zero third-party Go dependencies."
