@@ -293,20 +293,26 @@ $endif$
   document.body.appendChild(form);
   var pending = null;
 
-  document.addEventListener('mouseup', function () {
-    setTimeout(function () {
+  /* selectionchange, not mouseup: fires for mouse, touch (iPad/phone), and
+     keyboard selection alike. Debounced so the button appears when the
+     selection settles rather than flickering while it grows. */
+  var selTimer = null;
+  document.addEventListener('selectionchange', function () {
+    if (selTimer) clearTimeout(selTimer);
+    selTimer = setTimeout(function () {
       if (!form.hidden) return;
       var sel = window.getSelection();
-      var txt = sel && sel.toString().trim();
+      var txt = sel && sel.rangeCount ? sel.toString().trim() : '';
       if (!txt || txt.length < 3 || txt.length > 512 || !article.contains(sel.anchorNode)) {
         btn.hidden = true; return;
       }
       var rect = sel.getRangeAt(0).getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) { btn.hidden = true; return; }
       pending = { quote: txt };
       btn.style.left = (rect.right + window.scrollX + 6) + 'px';
       btn.style.top = (rect.top + window.scrollY - 4) + 'px';
       btn.hidden = false;
-    }, 0);
+    }, 350);
   });
   btn.addEventListener('click', function () {
     form.style.left = btn.style.left; form.style.top = btn.style.top;
