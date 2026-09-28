@@ -23,6 +23,8 @@ Produce a **reviewer-facing** HTML walkthrough that tells the story behind a dif
 
 (Installed elsewhere? Use `<dir of this SKILL.md>/render-walkthrough.sh`.)
 
+The same page shell serves non-PR docs (specs, plans, notes, pre-reviews) through the `rendering-spec-docs` skill, whose `render-doc.sh` wraps this renderer and relabels the top bar. Change the CSS/template here and both skills follow.
+
 Every walkthrough gets the same page: a sticky **contents box top-right** that tracks the section being read, Markdown **footnotes lifted into the margin as sidenotes**, numbered sections, light/dark following the OS, one self-contained `.html`. The only dependency is **pandoc** (`brew install pandoc`). A repo's own generic `render_spec.sh` is not the walkthrough style — use the bundled renderer.
 
 **NEVER hand-author the HTML. NEVER put raw HTML or CSS classes in the Markdown.** Headings, tables, code fences, task lists, blockquotes, footnotes and emoji (🔍 ✅ ⚠️) cover every need; hand-HTML can't be re-rendered and breaks the contents box. "Just two small classes" is still zero classes; severity colors are not what a reviewer needs — decisions are.

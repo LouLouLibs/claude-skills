@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<!-- walkthrough.html — pandoc template for the pr-walkthrough renderer.
+<!-- walkthrough.html — pandoc template for the pr-walkthrough renderer, and the
+     house page shell shared with rendering-spec-docs (which relabels the top-bar
+     kicker and the generator meta via the `kicker` / `renderer` variables).
      Page shell: sticky top bar, reading column, right sidebar holding the
      contents box (pandoc's --toc) and the sidenotes container. The script at
      the foot lifts pandoc's footnotes into the margin and keeps the contents
@@ -8,7 +10,7 @@
 <html lang="$if(lang)$$lang$$else$en$endif$">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc $pandoc-version$ · pr-walkthrough" />
+  <meta name="generator" content="pandoc $pandoc-version$ · $if(renderer)$$renderer$$else$pr-walkthrough$endif$" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
   <title>$if(title-prefix)$$title-prefix$ – $endif$$pagetitle$</title>
@@ -27,7 +29,7 @@ $endfor$
 <header id="topbar">
   <div class="wrap">
     <span class="prompt">&gt;_</span>
-    <span class="kicker">walkthrough</span>
+    <span class="kicker">$if(kicker)$$kicker$$else$walkthrough$endif$</span>
 $if(title)$
     <span class="topbar-title">$title$</span>
 $endif$
