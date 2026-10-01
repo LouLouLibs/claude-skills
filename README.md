@@ -43,6 +43,7 @@ These skills use [xl-cli-tools](https://github.com/LouLouLibs/xl-cli-tools), whi
 | `julia-release` | Tag Julia package versions and update registry |
 | `debug-remote-pipeline` | Debug remote Snakemake pipelines via SSH |
 | `pr-walkthrough` | Reviewer-facing HTML walkthrough of a PR: numbered sections, sticky contents box, footnotes as margin sidenotes (needs pandoc) |
+| `rendering-spec-docs` | Render any spec / plan / design / notes markdown to the same house HTML page (wraps `pr-walkthrough`'s renderer; needs pandoc) |
 
 ## Installation
 
@@ -60,6 +61,9 @@ cp -R "$(pwd)/skills/dtcat" ~/.claude/skills/dtcat
 
 Skills are copied (not symlinked) so they're also picked up inside VMs and
 sandboxes where this repo checkout isn't mounted.
+
+`rendering-spec-docs` uses the page shell bundled with `pr-walkthrough`, so
+install the two together (`install.sh` does).
 
 Skills are available immediately in new Claude Code sessions.
 

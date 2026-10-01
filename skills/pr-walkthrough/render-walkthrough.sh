@@ -4,7 +4,11 @@
 # sidenote script are all inlined, so the page works from file:// and can be
 # committed next to the .md. Works in ANY repo; the only dependency is pandoc.
 #
-# Usage: render-walkthrough.sh path/to/walkthrough.md   ->  writes walkthrough.html
+# Usage: render-walkthrough.sh path/to/walkthrough.md [--math] [--kicker LABEL] [--renderer NAME]
+#        ->  writes walkthrough.html
+#   --math      keep the gfm TeX-math extension and emit MathML (default: `$` literal)
+#   --kicker    top-bar label (default "walkthrough"); rendering-spec-docs passes "doc"
+#   --renderer  name written into <meta name="generator"> (default "pr-walkthrough")
 #
 # What pandoc is asked to do (walkthrough.html is the page shell):
 #   --shift-heading-level-by=-1  the leading "# PR …" H1 becomes the page
@@ -18,16 +22,22 @@ set -euo pipefail
 # Default keeps `$` literal (walkthroughs quote dollar amounts); --math turns
 # the gfm math extension back on and emits self-contained MathML.
 math=0
+kicker="walkthrough"
+renderer_name="pr-walkthrough"
 args=()
-for a in "$@"; do
-  case "$a" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --math) math=1 ;;
-    *) args+=("$a") ;;
+    --kicker|--renderer)
+      [[ $# -ge 2 ]] || { echo "$1 needs a value" >&2; exit 1; }
+      if [[ "$1" == --kicker ]]; then kicker="$2"; else renderer_name="$2"; fi
+      shift ;;
+    *) args+=("$1") ;;
   esac
+  shift
 done
 set -- ${args[@]+"${args[@]}"}
-
-[[ $# -ge 1 ]] || { echo "usage: $0 <markdown-file>" >&2; exit 1; }
+[[ $# -ge 1 ]] || { echo "usage: $0 <markdown-file> [--math] [--kicker LABEL] [--renderer NAME]" >&2; exit 1; }
 src="$1"
 [[ -f "$src" ]] || { echo "not found: $src" >&2; exit 1; }
 out="${src%.md}.html"
@@ -76,6 +86,8 @@ pandoc \
   --shift-heading-level-by=-1 \
   --toc --toc-depth=2 \
   --number-sections \
+  --variable "kicker=$kicker" \
+  --variable "renderer=$renderer_name" \
   "${highlight[@]}" \
   ${meta[@]+"${meta[@]}"} \
   -o "$out" \

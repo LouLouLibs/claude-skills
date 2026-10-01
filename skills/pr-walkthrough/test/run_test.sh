@@ -35,7 +35,9 @@ echo "ok 2 - self-contained"
 # --- 3. H1 became the page title; sections are numbered ----------------------
 grep -q '<title>PR #42 — Replace ad-hoc CSV parser with' "$OUT" || fail "H1 not promoted to <title>"
 grep -q 'class="header-section-number">1</span> TL;DR' "$OUT" || fail "sections not numbered"
-echo "ok 3 - title + numbered sections"
+grep -q 'name="generator" content="pandoc [^"]* · pr-walkthrough"' "$OUT" || fail "generator meta lost pr-walkthrough label"
+grep -q '<span class="kicker">walkthrough</span>' "$OUT" || fail "top bar kicker is not walkthrough"
+echo "ok 3 - title + numbered sections + default labels"
 
 # --- 4. contents box lists sections and subsections --------------------------
 grep -q 'id="TOC"' "$OUT" || fail "no table of contents"
